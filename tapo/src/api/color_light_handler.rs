@@ -4,7 +4,7 @@ use crate::responses::{DeviceInfoColorLightResult, DeviceUsageEnergyMonitoringRe
 
 use super::{ApiClient, ApiClientExt, HandlerExt};
 
-/// Handler for the [L530](https://www.tapo.com/en/search/?q=L530), [L630](https://www.tapo.com/en/search/?q=L630) and [L900](https://www.tapo.com/en/search/?q=L900) devices.
+/// Handler for the [L530](https://www.tapo.com/en/search/?q=L530) and [L630](https://www.tapo.com/en/search/?q=L630) devices.
 pub struct ColorLightHandler {
     client: ApiClient,
 }

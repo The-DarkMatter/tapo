@@ -9,8 +9,8 @@ use serde::de::DeserializeOwned;
 
 use crate::api::protocol::{TapoProtocol, TapoProtocolExt};
 use crate::api::{
-    ColorLightHandler, ColorLightStripHandler, GenericDeviceHandler, HubHandler, LightHandler,
-    PlugEnergyMonitoringHandler, PlugHandler,
+    ColorLightHandler, GenericDeviceHandler, HubHandler, LightHandler, PlugEnergyMonitoringHandler,
+    PlugHandler, PowerStripHandler, RgbLightStripHandler, RgbicLightStripHandler,
 };
 use crate::error::{Error, TapoResponseError};
 use crate::requests::{
@@ -245,7 +245,7 @@ impl ApiClient {
         Ok(ColorLightHandler::new(self))
     }
 
-    /// Specializes the given [`ApiClient`] into an authenticated [`ColorLightHandler`].
+    /// Specializes the given [`ApiClient`] into an authenticated [`RgbLightStripHandler`].
     ///
     /// # Arguments
     ///
@@ -264,13 +264,16 @@ impl ApiClient {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn l900(mut self, ip_address: impl Into<String>) -> Result<ColorLightHandler, Error> {
+    pub async fn l900(
+        mut self,
+        ip_address: impl Into<String>,
+    ) -> Result<RgbLightStripHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(ColorLightHandler::new(self))
+        Ok(RgbLightStripHandler::new(self))
     }
 
-    /// Specializes the given [`ApiClient`] into an authenticated [`ColorLightStripHandler`].
+    /// Specializes the given [`ApiClient`] into an authenticated [`RgbicLightStripHandler`].
     ///
     /// # Arguments
     ///
@@ -292,13 +295,13 @@ impl ApiClient {
     pub async fn l920(
         mut self,
         ip_address: impl Into<String>,
-    ) -> Result<ColorLightStripHandler, Error> {
+    ) -> Result<RgbicLightStripHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(ColorLightStripHandler::new(self))
+        Ok(RgbicLightStripHandler::new(self))
     }
 
-    /// Specializes the given [`ApiClient`] into an authenticated [`ColorLightStripHandler`].
+    /// Specializes the given [`ApiClient`] into an authenticated [`RgbicLightStripHandler`].
     ///
     /// # Arguments
     ///
@@ -320,10 +323,10 @@ impl ApiClient {
     pub async fn l930(
         mut self,
         ip_address: impl Into<String>,
-    ) -> Result<ColorLightStripHandler, Error> {
+    ) -> Result<RgbicLightStripHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(ColorLightStripHandler::new(self))
+        Ok(RgbicLightStripHandler::new(self))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`PlugHandler`].
@@ -402,6 +405,32 @@ impl ApiClient {
         self.login(ip_address).await?;
 
         Ok(PlugEnergyMonitoringHandler::new(self))
+    }
+
+    /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripHandler`].
+    ///
+    /// # Arguments
+    ///
+    /// * `ip_address` - the IP address of the device
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use tapo::ApiClient;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let device = ApiClient::new("tapo-username@example.com", "tapo-password")
+    ///     .p300("192.168.1.100")
+    ///     .await?;
+    /// let child_device_list = device.get_child_device_list().await?;
+    /// println!("Child device list: {child_device_list:?}");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn p300(mut self, ip_address: impl Into<String>) -> Result<PowerStripHandler, Error> {
+        self.login(ip_address).await?;
+
+        Ok(PowerStripHandler::new(self))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`PlugEnergyMonitoringHandler`].

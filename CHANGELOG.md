@@ -12,6 +12,43 @@ file. This change log follows the conventions of
 
 ### Changed
 
+- H100's create child device handler methods now take a `HubDevice` `enum` instead of a `String` and are now `async` to allow for more flexibility. This enables the caller to find child devices by either device ID or nickname.
+- `PlugIdentifier` has been renamed to `Plug`.
+- `Plug::ByDeviceId` now verifies that the provided device ID is found and returns an `Error::DeviceNotFound` error when it's not.
+
+## [Python Unreleased][Unreleased]
+
+## [Rust v0.7.11][v0.7.11] - 2024-05-04
+
+### Added
+
+- Added support for the P300 power strip (thanks to @Michal-Szczepaniak).
+- `RgbLightStripHandler` and `DeviceInfoRgbLightStripResult` have been added to support the L900 devices separately from the L530 and L630 devices.
+
+### Changed
+
+- `ChildDeviceResult` has been renamed to `ChildDeviceHubResult` to facilitate adding support for other devices with children.
+- `ColorLightStripHandler` has been renamed to `RgbicLightStripHandler` to better reflect its purpose.
+- `DeviceInfoColorLightStripResult` has been renamed to `DeviceInfoRgbicLightStripResult` to better reflect its purpose.
+
+## [Python v0.3.0][py-v0.3.0] - 2024-05-04
+
+### Added
+
+- Added partial support for the H100 hub and it's child devices. Currently, only the `get_device_info` function is supported for the child devices through the hub's `get_child_device_list` method.
+
+### Changed
+
+- A large number of types have been reorganized to me more in line with the Rust library. This includes moving many of them under the `requests` and `responses` sub modules.
+
+### Removed
+
+- `l900` has been removed from the `ApiClient` until proper support is added.
+
+## [Rust v0.7.10][v0.7.10] - 2024-04-05
+
+### Changed
+
 - The implementation of `ApiClient::new` has been improved to allow for the return of `ApiClient` instead of `Result<ApiClient, Error>`.
 - The default timeout for all requests has been reduced to 30 seconds from 300 seconds.
 - `ApiClient::with_timeout` has been added to allow for the setting of a custom timeout for all requests (thanks to @skoky).
@@ -307,6 +344,8 @@ let device = ApiClient::new(ip_address, tapo_username, tapo_password)?
 ### Initial Release of Tapo
 
 [Unreleased]: https://github.com/mihai-dinculescu/tapo
+[v0.7.11]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.11
+[py-v0.3.0]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.3.0
 [v0.7.10]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.10
 [py-v0.2.1]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.2.1
 [v0.7.9]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.9

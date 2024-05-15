@@ -2,7 +2,8 @@
 use std::env;
 
 use log::{info, LevelFilter};
-use tapo::{responses::ChildDeviceResult, ApiClient};
+use tapo::responses::ChildDeviceHubResult;
+use tapo::{ApiClient, HubDevice};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for child in child_device_list {
         match child {
-            ChildDeviceResult::KE100(device) => {
+            ChildDeviceHubResult::KE100(device) => {
                 info!(
                     "Found KE100 child device with nickname: {}, id: {}, current temperature: {} {:?} and target temperature: {} {:?}.",
                     device.nickname,
@@ -42,8 +43,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     device.temperature_unit,
                 );
             }
-            ChildDeviceResult::S200B(device) => {
-                let s200b = hub.s200b(&device.device_id);
+            ChildDeviceHubResult::S200B(device) => {
+                let s200b = hub.s200b(HubDevice::ByDeviceId(&device.device_id)).await?;
                 let trigger_logs = s200b.get_trigger_logs(5, 0).await?;
 
                 info!(
@@ -51,8 +52,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     device.nickname, device.device_id, trigger_logs
                 );
             }
-            ChildDeviceResult::T100(device) => {
-                let t100 = hub.t100(&device.device_id);
+            ChildDeviceHubResult::T100(device) => {
+                let t100 = hub.t100(HubDevice::ByDeviceId(&device.device_id)).await?;
                 let trigger_logs = t100.get_trigger_logs(5, 0).await?;
 
                 info!(
@@ -60,8 +61,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     device.nickname, device.device_id, device.detected, trigger_logs
                 );
             }
-            ChildDeviceResult::T110(device) => {
-                let t110 = hub.t110(&device.device_id);
+            ChildDeviceHubResult::T110(device) => {
+                let t110 = hub.t110(HubDevice::ByDeviceId(&device.device_id)).await?;
                 let trigger_logs = t110.get_trigger_logs(5, 0).await?;
 
                 info!(
@@ -69,8 +70,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     device.nickname, device.device_id, device.open, trigger_logs
                 );
             }
-            ChildDeviceResult::T300(device) => {
-                let t300 = hub.t300(&device.device_id);
+            ChildDeviceHubResult::T300(device) => {
+                let t300 = hub.t300(HubDevice::ByDeviceId(&device.device_id)).await?;
                 let trigger_logs = t300.get_trigger_logs(5, 0).await?;
 
                 info!(
@@ -82,8 +83,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     trigger_logs
                 );
             }
-            ChildDeviceResult::T310(device) | ChildDeviceResult::T315(device) => {
-                let t31x = hub.t315(&device.device_id);
+            ChildDeviceHubResult::T310(device) => {
+                let t31x = hub.t310(HubDevice::ByDeviceId(&device.device_id)).await?;
+                let temperature_humidity_records = t31x.get_temperature_humidity_records().await?;
+
+                info!(
+                    "Found T31X child device with nickname: {}, id: {}, temperature: {} {:?}, humidity: {}%, 24-hour ago record: {:?}.",
+                    device.nickname,
+                    device.device_id,
+                    device.current_temperature,
+                    device.temperature_unit,
+                    device.current_humidity,
+                    temperature_humidity_records.records.first()
+                );
+            }
+            ChildDeviceHubResult::T315(device) => {
+                let t31x = hub.t315(HubDevice::ByDeviceId(&device.device_id)).await?;
                 let temperature_humidity_records = t31x.get_temperature_humidity_records().await?;
 
                 info!(
