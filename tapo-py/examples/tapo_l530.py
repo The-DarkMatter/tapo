@@ -7,9 +7,9 @@ from tapo import ApiClient, Color
 
 
 async def main():
-    tapo_username = os.getenv("TAPO_USERNAME")
-    tapo_password = os.getenv("TAPO_PASSWORD")
-    ip_address = os.getenv("IP_ADDRESS")
+    tapo_username = "amoghupadhyay007@gmail.com"
+    tapo_password = "PR0wPQ3axzaI7T"
+    ip_address = "192.168.1.2"
 
     client = ApiClient(tapo_username, tapo_password)
     device = await client.l530(ip_address)
