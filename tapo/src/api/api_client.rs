@@ -2,9 +2,8 @@ use std::fmt;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use isahc::prelude::Configurable;
-use isahc::HttpClient;
 use log::debug;
+use reqwest::Client;
 use serde::de::DeserializeOwned;
 
 use crate::api::protocol::{TapoProtocol, TapoProtocolExt};
@@ -14,12 +13,14 @@ use crate::api::{
 };
 use crate::error::{Error, TapoResponseError};
 use crate::requests::{
-    ControlChildParams, EmptyParams, EnergyDataInterval, GetEnergyDataParams, LightingEffect,
-    MultipleRequestParams, TapoParams, TapoRequest,
+    ControlChildParams, EmptyParams, EnergyDataInterval, GetChildDeviceListParams,
+    GetEnergyDataParams, LightingEffect, MultipleRequestParams, PlayAlarmParams, TapoParams,
+    TapoRequest,
 };
 use crate::responses::{
     validate_response, ControlChildResult, CurrentPowerResult, DecodableResultExt,
-    EnergyDataResult, EnergyUsageResult, TapoMultipleResponse, TapoResponseExt, TapoResult,
+    EnergyDataResult, EnergyUsageResult, SupportedAlarmTypeListResult, TapoMultipleResponse,
+    TapoResponseExt, TapoResult,
 };
 
 const TERMINAL_UUID: &str = "00-00-00-00-00-00";
@@ -61,7 +62,7 @@ pub struct ApiClient {
 impl ApiClient {
     /// Returns a new instance of [`ApiClient`].
     /// It is cheaper to [`ApiClient::clone`] an existing instance than to create a new one when multiple devices need to be controller.
-    /// This is because [`ApiClient::clone`] reuses the underlying [`isahc::HttpClient`] and [`openssl::rsa::Rsa`] key.
+    /// This is because [`ApiClient::clone`] reuses the underlying [`reqwest::Client`].
     ///
     /// # Arguments
     ///
@@ -190,6 +191,31 @@ impl ApiClient {
     /// # }
     /// ```
     pub async fn l530(mut self, ip_address: impl Into<String>) -> Result<ColorLightHandler, Error> {
+        self.login(ip_address).await?;
+
+        Ok(ColorLightHandler::new(self))
+    }
+
+    /// Specializes the given [`ApiClient`] into an authenticated [`ColorLightHandler`].
+    ///
+    /// # Arguments
+    ///
+    /// * `ip_address` - the IP address of the device
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use tapo::ApiClient;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let device = ApiClient::new("tapo-username@example.com", "tapo-password")
+    ///     .l535("192.168.1.100")
+    ///     .await?;
+    /// device.on().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn l535(mut self, ip_address: impl Into<String>) -> Result<ColorLightHandler, Error> {
         self.login(ip_address).await?;
 
         Ok(ColorLightHandler::new(self))
@@ -407,32 +433,6 @@ impl ApiClient {
         Ok(PlugEnergyMonitoringHandler::new(self))
     }
 
-    /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripHandler`].
-    ///
-    /// # Arguments
-    ///
-    /// * `ip_address` - the IP address of the device
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// # use tapo::ApiClient;
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let device = ApiClient::new("tapo-username@example.com", "tapo-password")
-    ///     .p300("192.168.1.100")
-    ///     .await?;
-    /// let child_device_list = device.get_child_device_list().await?;
-    /// println!("Child device list: {child_device_list:?}");
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn p300(mut self, ip_address: impl Into<String>) -> Result<PowerStripHandler, Error> {
-        self.login(ip_address).await?;
-
-        Ok(PowerStripHandler::new(self))
-    }
-
     /// Specializes the given [`ApiClient`] into an authenticated [`PlugEnergyMonitoringHandler`].
     ///
     /// # Arguments
@@ -459,6 +459,58 @@ impl ApiClient {
         self.login(ip_address).await?;
 
         Ok(PlugEnergyMonitoringHandler::new(self))
+    }
+
+    /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripHandler`].
+    ///
+    /// # Arguments
+    ///
+    /// * `ip_address` - the IP address of the device
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use tapo::ApiClient;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let device = ApiClient::new("tapo-username@example.com", "tapo-password")
+    ///     .p300("192.168.1.100")
+    ///     .await?;
+    /// let child_device_list = device.get_child_device_list().await?;
+    /// println!("Child device list: {child_device_list:?}");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn p300(mut self, ip_address: impl Into<String>) -> Result<PowerStripHandler, Error> {
+        self.login(ip_address).await?;
+
+        Ok(PowerStripHandler::new(self))
+    }
+
+    /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripHandler`].
+    ///
+    /// # Arguments
+    ///
+    /// * `ip_address` - the IP address of the device
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use tapo::ApiClient;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let device = ApiClient::new("tapo-username@example.com", "tapo-password")
+    ///     .p304("192.168.1.100")
+    ///     .await?;
+    /// let child_device_list = device.get_child_device_list().await?;
+    /// println!("Child device list: {child_device_list:?}");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn p304(mut self, ip_address: impl Into<String>) -> Result<PowerStripHandler, Error> {
+        self.login(ip_address).await?;
+
+        Ok(PowerStripHandler::new(self))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`HubHandler`].
@@ -510,6 +562,37 @@ impl ApiClient {
         self.get_protocol_mut()?
             .refresh_session(tapo_username, tapo_password)
             .await
+    }
+
+    pub(crate) async fn get_supported_alarm_type_list(
+        &self,
+    ) -> Result<SupportedAlarmTypeListResult, Error> {
+        let request = TapoRequest::GetSupportedAlarmTypeList(TapoParams::new(EmptyParams));
+
+        self.get_protocol()?
+            .execute_request::<SupportedAlarmTypeListResult>(request, true)
+            .await?
+            .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
+    }
+
+    pub(crate) async fn play_alarm(&self, params: PlayAlarmParams) -> Result<(), Error> {
+        let request = TapoRequest::PlayAlarm(TapoParams::new(params));
+
+        self.get_protocol()?
+            .execute_request::<serde_json::Value>(request, true)
+            .await?;
+
+        Ok(())
+    }
+
+    pub(crate) async fn stop_alarm(&self) -> Result<(), Error> {
+        let request = TapoRequest::StopAlarm(TapoParams::new(EmptyParams));
+
+        self.get_protocol()?
+            .execute_request::<serde_json::Value>(request, true)
+            .await?;
+
+        Ok(())
     }
 
     pub(crate) async fn device_reset(&self) -> Result<(), Error> {
@@ -603,12 +686,14 @@ impl ApiClient {
             .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
     }
 
-    pub(crate) async fn get_child_device_list<R>(&self) -> Result<R, Error>
+    pub(crate) async fn get_child_device_list<R>(&self, start_index: u64) -> Result<R, Error>
     where
         R: fmt::Debug + DeserializeOwned + TapoResponseExt + DecodableResultExt,
     {
-        debug!("Get Child device list...");
-        let request = TapoRequest::GetChildDeviceList(TapoParams::new(EmptyParams));
+        debug!("Get Child device list starting with index {start_index}...");
+        let request = TapoRequest::GetChildDeviceList(TapoParams::new(
+            GetChildDeviceListParams::new(start_index),
+        ));
 
         self.get_protocol()?
             .execute_request::<R>(request, true)
@@ -669,8 +754,8 @@ impl ApiClient {
         if self.protocol.is_none() {
             let timeout = self.timeout.unwrap_or_else(|| Duration::from_secs(30));
 
-            let client = HttpClient::builder()
-                .title_case_headers(true)
+            let client = Client::builder()
+                .http1_title_case_headers()
                 .timeout(timeout)
                 .build()?;
             let protocol = TapoProtocol::new(client);
@@ -679,7 +764,7 @@ impl ApiClient {
 
         self.protocol.as_mut().ok_or_else(|| {
             Error::Other(anyhow::anyhow!(
-                "The protocol should have been initialized already."
+                "The protocol should have been initialized already"
             ))
         })
     }
@@ -687,7 +772,7 @@ impl ApiClient {
     fn get_protocol(&self) -> Result<&TapoProtocol, Error> {
         self.protocol.as_ref().ok_or_else(|| {
             Error::Other(anyhow::anyhow!(
-                "The protocol should have been initialized already."
+                "The protocol should have been initialized already"
             ))
         })
     }

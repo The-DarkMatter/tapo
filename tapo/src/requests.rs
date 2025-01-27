@@ -1,24 +1,25 @@
 //! Tapo request objects.
 
-mod color;
 mod control_child;
 mod energy_data_interval;
+mod get_child_device_list;
 mod get_energy_data;
 mod get_trigger_logs;
 mod handshake;
-mod lighting_effect;
 mod login_device;
 mod multiple_request;
+mod play_alarm;
 mod secure_passthrough;
 mod set_device_info;
 mod tapo_request;
 
-pub use color::*;
+pub use crate::responses::TemperatureUnitKE100;
 pub use energy_data_interval::*;
-pub use lighting_effect::*;
+pub use play_alarm::*;
 pub use set_device_info::*;
 
 pub(crate) use control_child::*;
+pub(crate) use get_child_device_list::*;
 pub(crate) use get_energy_data::*;
 pub(crate) use get_trigger_logs::*;
 pub(crate) use handshake::*;

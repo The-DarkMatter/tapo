@@ -87,7 +87,6 @@ impl RgbLightStripHandler {
     }
 
     /// Sets the *brightness* and turns *on* the device.
-    /// Pre-existing *lighting effect* will be removed.
     ///
     /// # Arguments
     ///
@@ -100,7 +99,6 @@ impl RgbLightStripHandler {
     }
 
     /// Sets the *color* and turns *on* the device.
-    /// Pre-existing *lighting effect* will be removed.
     ///
     /// # Arguments
     ///
@@ -113,11 +111,10 @@ impl RgbLightStripHandler {
     }
 
     /// Sets the *hue*, *saturation* and turns *on* the device.
-    /// Pre-existing *lighting effect* will be removed.
     ///
     /// # Arguments
     ///
-    /// * `hue` - between 1 and 360
+    /// * `hue` - between 0 and 360
     /// * `saturation` - between 1 and 100
     pub async fn set_hue_saturation(&self, hue: u16, saturation: u8) -> Result<(), Error> {
         ColorLightSetDeviceInfoParams::new()
@@ -127,7 +124,6 @@ impl RgbLightStripHandler {
     }
 
     /// Sets the *color temperature* and turns *on* the device.
-    /// Pre-existing *lighting effect* will be removed.
     ///
     /// # Arguments
     ///

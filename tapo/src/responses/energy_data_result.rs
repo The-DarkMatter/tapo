@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 use crate::responses::TapoResponseExt;
-use crate::tapo_date_format::der_tapo_datetime_format;
+use crate::utils::der_tapo_datetime_format;
 
 /// Energy data for the requested [`crate::requests::EnergyDataInterval`].
 #[derive(Debug, Serialize, Deserialize)]
@@ -11,11 +11,16 @@ pub struct EnergyDataResult {
     /// Local time of the device.
     #[serde(deserialize_with = "der_tapo_datetime_format")]
     pub local_time: NaiveDateTime,
-    /// Energy data for the given `interval` in watts (W).
+    /// Energy data for the given `interval` in Watt Hours (Wh).
     pub data: Vec<u64>,
-    /// Interval start timestamp in milliseconds.
+    /// Start timestamp of the interval in milliseconds. This value is provided
+    /// in the `get_energy_data` request and is passed through. Note that
+    /// it may not align with the returned data if the method is used
+    /// beyond its specified capabilities.
     pub start_timestamp: u64,
-    /// Interval end timestamp in milliseconds.
+    /// End timestamp of the interval in milliseconds. This value is provided
+    /// in the `get_energy_data` request and is passed through. Note that
+    /// it may not align with the returned data for intervals other than hourly.
     pub end_timestamp: u64,
     /// Interval in minutes.
     pub interval: u64,

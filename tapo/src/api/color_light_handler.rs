@@ -4,7 +4,9 @@ use crate::responses::{DeviceInfoColorLightResult, DeviceUsageEnergyMonitoringRe
 
 use super::{ApiClient, ApiClientExt, HandlerExt};
 
-/// Handler for the [L530](https://www.tapo.com/en/search/?q=L530) and [L630](https://www.tapo.com/en/search/?q=L630) devices.
+/// Handler for the [L530](https://www.tapo.com/en/search/?q=L530),
+/// [L535](https://www.tapo.com/en/search/?q=L535) and
+/// [L630](https://www.tapo.com/en/search/?q=L630) devices.
 pub struct ColorLightHandler {
     client: ApiClient,
 }
@@ -114,7 +116,7 @@ impl ColorLightHandler {
     ///
     /// # Arguments
     ///
-    /// * `hue` - between 1 and 360
+    /// * `hue` - between 0 and 360
     /// * `saturation` - between 1 and 100
     pub async fn set_hue_saturation(&self, hue: u16, saturation: u8) -> Result<(), Error> {
         ColorLightSetDeviceInfoParams::new()

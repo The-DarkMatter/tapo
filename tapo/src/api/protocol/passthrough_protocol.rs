@@ -2,12 +2,14 @@ use std::fmt;
 
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
-use isahc::cookies::CookieJar;
-use isahc::prelude::Configurable;
-use isahc::{AsyncReadResponseExt, HttpClient, Request};
-use log::debug;
+use log::{debug, trace};
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use reqwest::header::COOKIE;
+use reqwest::Client;
 use serde::de::DeserializeOwned;
 
+use crate::api::protocol::TapoProtocol;
 use crate::requests::{
     HandshakeParams, LoginDeviceParams, SecurePassthroughParams, TapoParams, TapoRequest,
 };
@@ -23,7 +25,7 @@ use super::tapo_protocol::TapoProtocolExt;
 
 #[derive(Debug)]
 pub(crate) struct PassthroughProtocol {
-    client: HttpClient,
+    client: Client,
     key_pair: PassthroughKeyPair,
     session: Option<Session>,
 }
@@ -31,7 +33,7 @@ pub(crate) struct PassthroughProtocol {
 #[derive(Debug)]
 struct Session {
     pub url: String,
-    pub cookie_jar: CookieJar,
+    pub cookie: String,
     pub cipher: PassthroughCipher,
     pub token: Option<String>,
 }
@@ -71,7 +73,7 @@ impl TapoProtocolExt for PassthroughProtocol {
                 session
                     .token
                     .as_ref()
-                    .ok_or_else(|| anyhow::anyhow!("token shouldn't be None"))?
+                    .ok_or_else(|| anyhow::anyhow!("Token shouldn not be None"))?
             )
         } else {
             session.url.clone()
@@ -87,13 +89,17 @@ impl TapoProtocolExt for PassthroughProtocol {
             TapoRequest::SecurePassthrough(TapoParams::new(secure_passthrough_params));
         let secure_passthrough_request_string = serde_json::to_string(&secure_passthrough_request)?;
 
-        let request = Request::post(url)
-            .cookie_jar(session.cookie_jar.clone())
-            .body(secure_passthrough_request_string)
-            .map_err(isahc::Error::from)?;
+        let request = self
+            .client
+            .post(url)
+            .header(COOKIE, session.cookie.clone())
+            .body(secure_passthrough_request_string);
 
-        let response: TapoResponse<TapoResult> =
-            self.client.send_async(request).await?.json().await?;
+        let response = request
+            .send()
+            .await?
+            .json::<TapoResponse<TapoResult>>()
+            .await?;
 
         debug!("Device responded with: {response:?}");
 
@@ -106,7 +112,7 @@ impl TapoProtocolExt for PassthroughProtocol {
 
         let inner_response_decrypted = session.cipher.decrypt(&inner_response_encrypted)?;
 
-        debug!("Device inner response decrypted: {inner_response_decrypted}");
+        trace!("Device inner response (raw): {inner_response_decrypted}");
 
         let inner_response: TapoResponse<R> = serde_json::from_str(&inner_response_decrypted)?;
 
@@ -125,10 +131,10 @@ impl TapoProtocolExt for PassthroughProtocol {
 }
 
 impl PassthroughProtocol {
-    pub fn new(client: HttpClient) -> Result<Self, Error> {
+    pub fn new(client: Client) -> Result<Self, Error> {
         Ok(Self {
             client,
-            key_pair: PassthroughKeyPair::new()?,
+            key_pair: PassthroughKeyPair::new(StdRng::from_entropy())?,
             session: None,
         })
     }
@@ -136,23 +142,17 @@ impl PassthroughProtocol {
     async fn handshake(&mut self, url: String) -> Result<(), Error> {
         debug!("Performing handshake...");
 
-        let cookie_jar = CookieJar::new();
-
         let params = HandshakeParams::new(self.key_pair.get_public_key()?);
         let request = TapoRequest::Handshake(TapoParams::new(params));
         let request_string = serde_json::to_string(&request)?;
 
-        let request = Request::post(&url)
-            .cookie_jar(cookie_jar.clone())
-            .body(request_string)
-            .map_err(isahc::Error::from)?;
+        let response = self.client.post(&url).body(request_string).send().await?;
+        let cookie = TapoProtocol::get_cookie(response.cookies())?;
+        let response_json = response.json::<TapoResponse<HandshakeResult>>().await?;
 
-        let response: TapoResponse<HandshakeResult> =
-            self.client.send_async(request).await?.json().await?;
+        validate_response(&response_json)?;
 
-        validate_response(&response)?;
-
-        let handshake_key = response
+        let handshake_key = response_json
             .result
             .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))?
             .key;
@@ -163,7 +163,7 @@ impl PassthroughProtocol {
 
         self.session.replace(Session {
             url,
-            cookie_jar,
+            cookie,
             cipher,
             token: None,
         });

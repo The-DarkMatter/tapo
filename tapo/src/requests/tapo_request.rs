@@ -3,8 +3,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 
 use crate::requests::{
-    ControlChildParams, GetEnergyDataParams, GetTriggerLogsParams, HandshakeParams, LightingEffect,
-    LoginDeviceParams, MultipleRequestParams, SecurePassthroughParams,
+    ControlChildParams, GetChildDeviceListParams, GetEnergyDataParams, GetTriggerLogsParams,
+    HandshakeParams, LightingEffect, LoginDeviceParams, MultipleRequestParams, PlayAlarmParams,
+    SecurePassthroughParams,
 };
 
 #[derive(Debug, Serialize)]
@@ -25,7 +26,7 @@ pub(crate) enum TapoRequest {
     GetEnergyUsage(TapoParams<EmptyParams>),
     GetEnergyData(TapoParams<GetEnergyDataParams>),
     GetCurrentPower(TapoParams<EmptyParams>),
-    GetChildDeviceList(TapoParams<EmptyParams>),
+    GetChildDeviceList(TapoParams<GetChildDeviceListParams>),
     GetChildDeviceComponentList(TapoParams<EmptyParams>),
     ControlChild(Box<TapoParams<ControlChildParams>>),
     // Child requests
@@ -34,6 +35,10 @@ pub(crate) enum TapoRequest {
     GetTriggerLogs(Box<TapoParams<GetTriggerLogsParams>>),
     #[serde(rename = "get_temp_humidity_records")]
     GetTemperatureHumidityRecords(Box<TapoParams<EmptyParams>>),
+    PlayAlarm(TapoParams<PlayAlarmParams>),
+    StopAlarm(TapoParams<EmptyParams>),
+    #[serde(rename = "get_support_alarm_type_list")]
+    GetSupportedAlarmTypeList(TapoParams<EmptyParams>),
 }
 
 #[derive(Debug, Serialize)]

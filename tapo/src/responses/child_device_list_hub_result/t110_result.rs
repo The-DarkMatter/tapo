@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 use crate::responses::{decode_value, DecodableResultExt, Status, TapoResponseExt};
 
-/// T110 contact sensor.
+/// Device info of Tapo T110 contact sensor.
 ///
 /// Specific properties: `open`, `report_interval`,
 /// `last_onboarding_timestamp`,`status_follow_edge`.
@@ -63,8 +63,9 @@ impl DecodableResultExt for T110Result {
 }
 
 /// T110 Log.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "event")]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
 #[allow(missing_docs)]
 pub enum T110Log {
     Close {
@@ -80,4 +81,16 @@ pub enum T110Log {
         id: u64,
         timestamp: u64,
     },
+}
+
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl T110Log {
+    /// Gets all the properties of this result as a dictionary.
+    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
+        let value = serde_json::to_value(self)
+            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
+
+        crate::python::serde_object_to_py_dict(py, &value)
+    }
 }

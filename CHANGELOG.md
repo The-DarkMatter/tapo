@@ -4,7 +4,195 @@ All notable changes to this project will be documented in this
 file. This change log follows the conventions of
 [keepachangelog.com][keepachangelog].
 
-## [Rust Unreleased][Unreleased]
+## [Unreleased][Unreleased]
+
+### Rust
+
+#### Added
+
+- Added functionality for controlling the alarm on the H100 hub via the `play_alarm` and `stop_alarm` methods in the `H100Handler`. Additionally, `get_supported_ringtone_list` is available to retrieve the list of supported ringtones for debugging purposes. (thanks to @kay)
+- Added the ability to retrieve the color configuration (`hue`, `saturation`, `color_temperature`) for the `Color` enum values through the `get_color_config` method. (thanks to @WhySoBad)
+
+#### Changed
+
+- The internal implementation of `H100Handler`'s `get_child_device_list` has been updated to fetch all pages, not just the first one.
+- `H100Handler`'s `get_child_device_list_json` now includes a `start_index` parameter to fetch child devices starting from a specific index.
+
+#### Fixed
+
+- Resolved an issue that caused the passthrough protocol test to incorrectly indicate support when it was not actually supported. (thanks to @WhySoBad)
+
+### Python
+
+#### Added
+
+- Added the ability to retrieve the color configuration (`hue`, `saturation`, `color_temperature`) for the `Color` enum values through the `get_color_config` method. (thanks to @WhySoBad)
+
+#### Changed
+
+- The internal implementation of `H100Handler`'s `get_child_device_list` has been updated to fetch all pages, not just the first one.
+- `H100Handler`'s `get_child_device_list_json` now includes a `start_index` parameter to fetch child devices starting from a specific index.
+
+#### Fixed
+
+- Resolved an issue that caused the passthrough protocol test to incorrectly indicate support when it was not actually supported. (thanks to @WhySoBad)
+
+## [v0.8.0][v0.8.0] - 2024-12-07
+
+This marks the first unified release of the Rust and Python libraries. Moving forward, both libraries will be released simultaneously and will share the same version number.
+
+### Rust
+
+#### Added
+
+- Added an example for the L900 light strips.
+
+#### Changed
+
+- `LightingEffect`'s `fadeoff` field has been renamed to `fade_off`, and its `with_fadeoff` method has been renamed to `with_fade_off`.
+- `LightingEffect`'s `new_with_random_id` function has been removed. The `new` function now creates a `LightingEffect` instance with a random ID by default.
+
+### Python
+
+#### Added
+
+- Added support for the L900 light strips.
+- Added support for the L920 and L930 light strips.
+- Added support for Python 3.13.
+
+## [Python v0.7.0][py-v0.7.0] - 2024-11-07
+
+### Added
+
+- Added support for the KE100 thermostatic radiator valve (TRV).
+
+## [Rust v0.7.17][v0.7.17] - 2024-10-23
+
+### Added
+
+- Added support for the P304 power strip.
+
+### Changed
+
+- The `openssl` dependency has been replaced with native Rust alternatives to expand cross-compilation options, such as for Android, and to decrease build times (thanks to @rbock44).
+- `PlugPowerStripHandler` has been renamed to `PowerStripPlugHandler` to be consistent with the rest of the library.
+- `PlugPowerStripResult` has been renamed to `PowerStripPlugResult` to be consistent with the rest of the library.
+- The `UsageByPeriodResult` fields `today`, `past7`, and `past30` have been updated to `Option<u64>` to handle cases where the API returns negative values, which will be represented as `None`.
+
+### Fixed
+
+- Updated all comments referencing Watts to confirm the correct units are specified.
+
+## [Python v0.6.0][py-v0.6.0] - 2024-10-23
+
+### Added
+
+- Added support for the P300 and P304 power strips.
+- Python logs can now capture entries from the underlying Rust library.
+
+### Changed
+
+- The `openssl` dependency has been replaced with native Rust alternatives to expand cross-compilation options, such as for Android, and to decrease build times (thanks to @rbock44).
+- The `UsageByPeriodResult` fields `today`, `past7`, and `past30` have been updated to `Optional[int]` to handle cases where the API returns negative values, which will be represented as `null`.
+
+### Fixed
+
+- Updated all comments referencing Watts to confirm the correct units are specified.
+
+## [Rust v0.7.16][v0.7.16] - 2024-09-27
+
+### Added
+
+- Added support for the L535 light bulbs.
+
+### Fixed
+
+- Fixed an issue that prevented the color from being set properly for the L535 light bulbs.
+
+## [Python v0.5.1][py-v0.5.1] - 2024-09-27
+
+### Added
+
+- Added support for the L535 light bulbs.
+
+### Fixed
+
+- Fixed an issue that prevented the color from being set properly for the L535 light bulbs.
+
+## [Rust v0.7.15][v0.7.15] - 2024-09-18
+
+### Added
+
+- The `LowBattery` variant has been added to the `S200BLog` enum.
+
+### Changed
+
+- The `t310` and `t315` methods of `HubHandler` can now create `T31XHandler` handlers for either of the two device types.
+- The child device handlers for the H100 hub and the P300 power strip have been redesigned to eliminate the use of lifetimes, to facilitate FFI integrations.
+- The comments of `start_timestamp` and `end_timestamp` fields in `EnergyDataResult` have been updated to better describe their purpose.
+- `S200BRotationParams`'s field `degrees` has been renamed to `rotation_degrees`.
+
+### Fixed
+
+- Fixed an issue with the `Color` presets that triggered a validation error when attempting to set the `color` to `DarkRed`.
+
+### Removed
+
+- The deprecated `past24h`, `past7d`, `past30d` and `past1y` fields have been removed from `EnergyUsageResult`. This data is now available exclusively through `get_energy_data`'s `EnergyDataResult` response.
+
+## [Python v0.5.0][py-v0.5.0] - 2024-09-18
+
+### Added
+
+- Added full support for the S200B switches through the `S200BHandler` handler.
+- Added full support for the T100 sensors through the `T100Handler` handler.
+- Added full support for the T110 sensors through the `T110Handler` handler.
+- Added full support for the T300 sensors through the `T300Handler` handler.
+- Added full support for the T310 and T315 sensors through the `T31XHandler` handler.
+
+### Changed
+
+- The comments of `start_timestamp` and `end_timestamp` fields in `EnergyDataResult` have been updated to better describe their purpose.
+
+### Fixed
+
+- Fixed an issue with the `Color` presets that triggered a validation error when attempting to set the `color` to `DarkRed`.
+
+## [Rust v0.7.14][v0.7.14] - 2024-08-31
+
+### Changed
+
+- `DeviceInfoPlugEnergyMonitoringResult` has been added to support the P110 and P115 devices, which have different responses compared to the P100 and P105 devices.
+
+### Fixed
+
+- `DeviceInfoPlugResult` has been updated to correctly support the P100 and P105 devices.
+
+## [Python v0.4.0][py-v0.4.0] - 2024-08-31
+
+### Changed
+
+- `DeviceInfoPlugEnergyMonitoringResult` has been added to support the P110 and P115 devices, which have different responses compared to the P100 and P105 devices.
+
+### Fixed
+
+- Resolved an issue that led to unrecoverable process hangs when a device request timed out.
+- The concurrency of device handlers has been significantly enhanced by replacing all `Mutex` instances with `RwLock`.
+- `DeviceInfoPlugResult` has been updated to correctly support the P100 and P105 devices.
+
+## [Rust v0.7.13][v0.7.13] - 2024-08-26
+
+### Changed
+
+- To align with the latest API updates, the `overheated` field for plugs has been replaced by three enums: `overcurrent_status`, `overheat_status`, and `power_protection_status` (thanks to @padenot).
+
+## [Python v0.3.2][py-v0.3.2] - 2024-08-26
+
+### Changed
+
+- To align with the latest API updates, the `overheated` field for plugs has been replaced by three enums: `overcurrent_status`, `overheat_status`, and `power_protection_status`.
+
+## [Rust v0.7.12][v0.7.12] - 2024-06-27
 
 ## [Python Unreleased][Unreleased]
 
@@ -15,8 +203,30 @@ file. This change log follows the conventions of
 - H100's create child device handler methods now take a `HubDevice` `enum` instead of a `String` and are now `async` to allow for more flexibility. This enables the caller to find child devices by either device ID or nickname.
 - `PlugIdentifier` has been renamed to `Plug`.
 - `Plug::ByDeviceId` now verifies that the provided device ID is found and returns an `Error::DeviceNotFound` error when it's not.
+- `HubDevice` variants now take a `String` instead of a `&str` to allow for more flexibility.
+- `Plug` variants now take a `String` instead of a `&str` to allow for more flexibility.
 
-## [Python Unreleased][Unreleased]
+### Fixed
+
+- `ColorLightSetDeviceInfoParams` `hue` field validation has been changed from `between 1 and 360` to `between 0 and 360` to match the device's expected range.
+- Fixed an issue where the `EnergyDataResult's `start_timestamp` and `end_timestamp` did not correctly adjust for timezone offsets.
+- The `chrono` dependency has been updated to `0.4.34` to fix the minimum version requirement.
+
+### Removed
+
+- The `overheated` property has been removed from `DeviceInfoGenericResult` because it's not present in the response of all devices.
+
+## [Python v0.3.1][py-v0.3.1] - 2024-06-27
+
+### Fixed
+
+- `ColorLightSetDeviceInfoParams` `hue` field validation has been changed from `between 1 and 360` to `between 0 and 360` to match the device's expected range.
+- Fixed an issue where the `EnergyDataResult's `start_timestamp` and `end_timestamp` did not correctly adjust for timezone offsets.
+- All handlers are now correctly exported and can be imported from the `tapo` module.
+
+### Removed
+
+- The `overheated` property has been removed from `DeviceInfoGenericResult` because it's not present in the response of all devices.
 
 ## [Rust v0.7.11][v0.7.11] - 2024-05-04
 
@@ -35,7 +245,7 @@ file. This change log follows the conventions of
 
 ### Added
 
-- Added partial support for the H100 hub and it's child devices. Currently, only the `get_device_info` function is supported for the child devices through the hub's `get_child_device_list` method.
+- Added partial support for the H100 hub and its child devices. Currently, only the `get_device_info` function is supported for the child devices through the hub's `get_child_device_list` method.
 
 ### Changed
 
@@ -344,6 +554,20 @@ let device = ApiClient::new(ip_address, tapo_username, tapo_password)?
 ### Initial Release of Tapo
 
 [Unreleased]: https://github.com/mihai-dinculescu/tapo
+[v0.8.0]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.0
+[py-v0.7.0]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.7.0
+[v0.7.17]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.17
+[py-v0.6.0]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.6.0
+[v0.7.16]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.16
+[py-v0.5.1]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.5.1
+[v0.7.15]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.15
+[py-v0.5.0]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.5.0
+[v0.7.14]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.14
+[py-v0.4.0]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.4.0
+[v0.7.13]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.13
+[py-v0.3.2]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.3.2
+[v0.7.12]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.12
+[py-v0.3.1]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.3.1
 [v0.7.11]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.11
 [py-v0.3.0]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.3.0
 [v0.7.10]: https://github.com/mihai-dinculescu/tapo/tree/v0.7.10

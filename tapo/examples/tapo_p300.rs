@@ -1,4 +1,4 @@
-/// P300 Example
+/// P300 and P304 Example
 use std::{env, thread, time::Duration};
 
 use log::{info, LevelFilter};
@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             child.nickname, child.device_id, child.device_on,
         );
 
-        let plug = power_strip.plug(Plug::ByDeviceId(&child.device_id)).await?;
+        let plug = power_strip.plug(Plug::ByDeviceId(child.device_id)).await?;
 
         info!("Turning device on...");
         plug.on().await?;
@@ -47,6 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         plug.off().await?;
 
         info!("Waiting 2 seconds...");
+        thread::sleep(Duration::from_secs(2));
     }
 
     Ok(())

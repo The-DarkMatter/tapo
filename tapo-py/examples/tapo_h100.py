@@ -35,42 +35,69 @@ async def main():
                 )
             )
         elif isinstance(child, S200BResult):
+            s200b = await hub.s200b(device_id=child.device_id)
+            trigger_logs = await s200b.get_trigger_logs(5, 0)
+
             print(
-                "Found S200B child device with nickname: {}, id: {}.".format(
+                "Found S200B child device with nickname: {}, id: {}, last 5 trigger logs: {}.".format(
                     child.nickname,
                     child.device_id,
+                    [log.to_dict() for log in trigger_logs.logs],
                 )
             )
         elif isinstance(child, T100Result):
+            t100 = await hub.t100(device_id=child.device_id)
+            trigger_logs = await t100.get_trigger_logs(5, 0)
+
             print(
-                "Found T100 child device with nickname: {}, id: {}, detected: {}.".format(
+                "Found T100 child device with nickname: {}, id: {}, detected: {}, last 5 trigger logs: {}.".format(
                     child.nickname,
                     child.device_id,
                     child.detected,
+                    [log.to_dict() for log in trigger_logs.logs],
                 )
             )
         elif isinstance(child, T110Result):
+            t110 = await hub.t110(device_id=child.device_id)
+            trigger_logs = await t110.get_trigger_logs(5, 0)
+
             print(
-                "Found T110 child device with nickname: {}, id: {}, open: {}.".format(
+                "Found T110 child device with nickname: {}, id: {}, open: {}, last 5 trigger logs: {}.".format(
                     child.nickname,
                     child.device_id,
                     child.open,
+                    [log.to_dict() for log in trigger_logs.logs],
                 )
             )
         elif isinstance(child, T300Result):
+            t300 = await hub.t300(device_id=child.device_id)
+            trigger_logs = await t300.get_trigger_logs(5, 0)
+
             print(
-                "Found T300 child device with nickname: {}, id: {}, in_alarm: {}, water_leak_status: {}.".format(
-                    child.nickname, child.device_id, child.in_alarm, child.water_leak_status
+                "Found T300 child device with nickname: {}, id: {}, in_alarm: {}, water_leak_status: {}, last 5 trigger logs: {}.".format(
+                    child.nickname,
+                    child.device_id,
+                    child.in_alarm,
+                    child.water_leak_status,
+                    [log.to_dict() for log in trigger_logs.logs],
                 )
             )
         elif isinstance(child, T31XResult):
+            t31x = await hub.t315(device_id=child.device_id)
+            temperature_humidity_records = await t31x.get_temperature_humidity_records()
+
             print(
-                "Found T31X child device with nickname: {}, id: {}, temperature: {:.2f} {}, humidity: {}%.".format(
+                "Found T31X child device with nickname: {}, id: {}, temperature: {:.2f} {}, humidity: {}%, earliest temperature and humidity record available: {}.".format(
                     child.nickname,
                     child.device_id,
                     child.current_temperature,
                     child.temperature_unit,
                     child.current_humidity,
+                    (
+                        temperature_humidity_records.records[0].to_dict()
+                        if temperature_humidity_records.records
+                        else None
+                    ),
                 )
             )
 

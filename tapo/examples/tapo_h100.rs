@@ -1,7 +1,9 @@
-/// H100 Example
-use std::env;
+//! H100 Example
 
 use log::{info, LevelFilter};
+use std::env;
+use std::time::Duration;
+use tapo::requests::{AlarmDuration, AlarmRingtone, AlarmVolume};
 use tapo::responses::ChildDeviceHubResult;
 use tapo::{ApiClient, HubDevice};
 
@@ -44,7 +46,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             ChildDeviceHubResult::S200B(device) => {
-                let s200b = hub.s200b(HubDevice::ByDeviceId(&device.device_id)).await?;
+                let s200b = hub
+                    .s200b(HubDevice::ByDeviceId(device.device_id.clone()))
+                    .await?;
                 let trigger_logs = s200b.get_trigger_logs(5, 0).await?;
 
                 info!(
@@ -53,7 +57,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             ChildDeviceHubResult::T100(device) => {
-                let t100 = hub.t100(HubDevice::ByDeviceId(&device.device_id)).await?;
+                let t100 = hub
+                    .t100(HubDevice::ByDeviceId(device.device_id.clone()))
+                    .await?;
                 let trigger_logs = t100.get_trigger_logs(5, 0).await?;
 
                 info!(
@@ -62,7 +68,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             ChildDeviceHubResult::T110(device) => {
-                let t110 = hub.t110(HubDevice::ByDeviceId(&device.device_id)).await?;
+                let t110 = hub
+                    .t110(HubDevice::ByDeviceId(device.device_id.clone()))
+                    .await?;
                 let trigger_logs = t110.get_trigger_logs(5, 0).await?;
 
                 info!(
@@ -71,7 +79,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             ChildDeviceHubResult::T300(device) => {
-                let t300 = hub.t300(HubDevice::ByDeviceId(&device.device_id)).await?;
+                let t300 = hub
+                    .t300(HubDevice::ByDeviceId(device.device_id.clone()))
+                    .await?;
                 let trigger_logs = t300.get_trigger_logs(5, 0).await?;
 
                 info!(
@@ -83,26 +93,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     trigger_logs
                 );
             }
-            ChildDeviceHubResult::T310(device) => {
-                let t31x = hub.t310(HubDevice::ByDeviceId(&device.device_id)).await?;
+            ChildDeviceHubResult::T310(device) | ChildDeviceHubResult::T315(device) => {
+                let t31x = hub
+                    .t315(HubDevice::ByDeviceId(device.device_id.clone()))
+                    .await?;
                 let temperature_humidity_records = t31x.get_temperature_humidity_records().await?;
 
                 info!(
-                    "Found T31X child device with nickname: {}, id: {}, temperature: {} {:?}, humidity: {}%, 24-hour ago record: {:?}.",
-                    device.nickname,
-                    device.device_id,
-                    device.current_temperature,
-                    device.temperature_unit,
-                    device.current_humidity,
-                    temperature_humidity_records.records.first()
-                );
-            }
-            ChildDeviceHubResult::T315(device) => {
-                let t31x = hub.t315(HubDevice::ByDeviceId(&device.device_id)).await?;
-                let temperature_humidity_records = t31x.get_temperature_humidity_records().await?;
-
-                info!(
-                    "Found T31X child device with nickname: {}, id: {}, temperature: {} {:?}, humidity: {}%, 24-hour ago record: {:?}.",
+                    "Found T31X child device with nickname: {}, id: {}, temperature: {} {:?}, humidity: {}%, earliest temperature and humidity record available: {:?}.",
                     device.nickname,
                     device.device_id,
                     device.current_temperature,
@@ -116,6 +114,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+
+    let ringtone = AlarmRingtone::Alarm1;
+    let volume = AlarmVolume::Low;
+    let duration = AlarmDuration::Seconds(1);
+
+    info!("Triggering the alarm ringtone {ringtone:?} for {duration:?} at a {volume:?} volume");
+    hub.play_alarm(Some(ringtone), Some(volume), duration)
+        .await?;
+
+    let device_info = hub.get_device_info().await?;
+    info!("Is device ringing?: {:?}", device_info.in_alarm);
+
+    tokio::time::sleep(Duration::from_secs(1)).await;
+
+    info!("Stopping the alarm");
+    hub.stop_alarm().await?;
+
+    let device_info = hub.get_device_info().await?;
+    info!("Is device ringing?: {:?}", device_info.in_alarm);
 
     Ok(())
 }

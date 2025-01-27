@@ -1,4 +1,4 @@
-/// L920 & L930 Example
+/// L920 and L930 Example
 use std::{env, thread, time::Duration};
 
 use log::{info, LevelFilter};
@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     thread::sleep(Duration::from_secs(10));
 
     info!("Setting a custom static Lighting effect...");
-    let custom_effect = LightingEffect::new_with_random_id(
+    let custom_effect = LightingEffect::new(
         "My Custom Static Effect",
         LightingEffectType::Static,
         true,
@@ -88,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     thread::sleep(Duration::from_secs(10));
 
     info!("Setting a custom sequence Lighting effect...");
-    let custom_effect = LightingEffect::new_with_random_id(
+    let custom_effect = LightingEffect::new(
         "My Custom Sequence Effect",
         LightingEffectType::Sequence,
         true,

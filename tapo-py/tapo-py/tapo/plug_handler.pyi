@@ -1,7 +1,9 @@
 from tapo.responses import DeviceInfoPlugResult, DeviceUsageResult
 
 class PlugHandler:
-    """Handler for the [P100](https://www.tapo.com/en/search/?q=P100) & [P105](https://www.tapo.com/en/search/?q=P105) devices."""
+    """Handler for the [P100](https://www.tapo.com/en/search/?q=P100) and
+    [P105](https://www.tapo.com/en/search/?q=P105) devices.
+    """
 
     def __init__(self, handler: object):
         """Private constructor.
@@ -36,7 +38,7 @@ class PlugHandler:
         try `PlugHandler.get_device_info_json`.
 
         Returns:
-            DeviceInfoPlugResult: Device info of Tapo P100, P105, P110 and P115.
+            DeviceInfoPlugResult: Device info of Tapo P100 and P105.
             Superset of `GenericDeviceInfoResult`.
         """
 

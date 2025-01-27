@@ -3,14 +3,16 @@ from datetime import datetime
 from tapo.requests import EnergyDataInterval
 from tapo.responses import (
     CurrentPowerResult,
-    DeviceInfoPlugResult,
+    DeviceInfoPlugEnergyMonitoringResult,
     DeviceUsageEnergyMonitoringResult,
     EnergyDataResult,
     EnergyUsageResult,
 )
 
 class PlugEnergyMonitoringHandler:
-    """Handler for the [P110](https://www.tapo.com/en/search/?q=P110) & [P115](https://www.tapo.com/en/search/?q=P115) devices."""
+    """Handler for the [P110](https://www.tapo.com/en/search/?q=P110) and
+    [P115](https://www.tapo.com/en/search/?q=P115) devices.
+    """
 
     def __init__(self, handler: object):
         """Private constructor.
@@ -38,14 +40,14 @@ class PlugEnergyMonitoringHandler:
         and requires reconfiguration.
         """
 
-    async def get_device_info(self) -> DeviceInfoPlugResult:
-        """Returns *device info* as `DeviceInfoPlugResult`.
+    async def get_device_info(self) -> DeviceInfoPlugEnergyMonitoringResult:
+        """Returns *device info* as `DeviceInfoPlugEnergyMonitoringResult`.
         It is not guaranteed to contain all the properties returned from the Tapo API.
         If the deserialization fails, or if a property that you care about it's not present,
         try `PlugEnergyMonitoringHandler.get_device_info_json`.
 
         Returns:
-            DeviceInfoPlugResult: Device info of Tapo P100, P105, P110 and P115.
+            DeviceInfoPlugEnergyMonitoringResult: Device info of P110 and P115.
             Superset of `GenericDeviceInfoResult`.
         """
 

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 use crate::responses::{decode_value, DecodableResultExt, DefaultStateType, TapoResponseExt};
 
-/// Device info of Tapo L530, L630 and L900. Superset of [`crate::responses::DeviceInfoGenericResult`].
+/// Device info of Tapo L530, L535 and L630. Superset of [`crate::responses::DeviceInfoGenericResult`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
 #[allow(missing_docs)]
@@ -27,10 +27,9 @@ pub struct DeviceInfoColorLightResult {
     pub specs: String,
     pub lang: String,
     pub device_on: bool,
-    /// The time in seconds this device has been ON since the last state change (ON/OFF).
+    /// The time in seconds this device has been ON since the last state change (On/Off).
     /// On v2 hardware this is always None.
     pub on_time: Option<u64>,
-    pub overheated: bool,
     pub nickname: String,
     pub avatar: String,
     pub has_set_location_info: bool,
@@ -42,13 +41,14 @@ pub struct DeviceInfoColorLightResult {
     // Unique to this device
     //
     pub brightness: u8,
-    pub dynamic_light_effect_enable: bool,
-    pub dynamic_light_effect_id: Option<String>,
-    pub hue: Option<u16>,
-    pub saturation: Option<u16>,
     pub color_temp: u16,
     /// The default state of a device to be used when internet connectivity is lost after a power cut.
     pub default_states: DefaultColorLightState,
+    pub dynamic_light_effect_enable: bool,
+    pub dynamic_light_effect_id: Option<String>,
+    pub hue: Option<u16>,
+    pub overheated: bool,
+    pub saturation: Option<u16>,
 }
 
 #[cfg(feature = "python")]

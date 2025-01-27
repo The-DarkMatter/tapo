@@ -1,9 +1,7 @@
 from typing import Optional
 
-from tapo.responses import DefaultStateType
-
 class DeviceInfoPlugResult:
-    """Device info of Tapo P100, P105, P110 and P115. Superset of `GenericDeviceInfoResult`."""
+    """Device info of Tapo P100 and P105. Superset of `GenericDeviceInfoResult`."""
 
     device_id: str
     type: str
@@ -22,8 +20,7 @@ class DeviceInfoPlugResult:
     lang: str
     device_on: bool
     on_time: int
-    """The time in seconds this device has been ON since the last state change (ON/OFF)."""
-    overheated: bool
+    """The time in seconds this device has been ON since the last state change (On/Off)."""
     nickname: str
     avatar: str
     has_set_location_info: bool
@@ -32,24 +29,9 @@ class DeviceInfoPlugResult:
     longitude: Optional[float]
     time_diff: Optional[int]
 
-    # Unique to this device
-    default_states: DefaultPlugState
-    """The default state of a device to be used when internet connectivity is lost after a power cut."""
-
     def to_dict(self) -> dict:
         """Gets all the properties of this result as a dictionary.
 
         Returns:
             dict: The result as a dictionary.
         """
-
-class DefaultPlugState:
-    """Default Plug State."""
-
-    type: DefaultStateType
-    state: PlugState
-
-class PlugState:
-    """Plug State."""
-
-    on: Optional[bool]

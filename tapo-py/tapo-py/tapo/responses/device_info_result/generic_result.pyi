@@ -20,8 +20,7 @@ class DeviceInfoGenericResult:
     lang: str
     device_on: Optional[bool]
     on_time: Optional[int]
-    """The time in seconds this device has been ON since the last state change (ON/OFF)."""
-    overheated: bool
+    """The time in seconds this device has been ON since the last state change (On/Off)."""
     nickname: str
     avatar: str
     has_set_location_info: bool

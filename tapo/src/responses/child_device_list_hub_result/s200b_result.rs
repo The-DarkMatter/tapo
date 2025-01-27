@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 use crate::responses::{decode_value, DecodableResultExt, Status, TapoResponseExt};
 
-/// S200B button switch.
+/// Device info of Tapo S200B button switch.
 ///
 /// Specific properties: `report_interval`, `last_onboarding_timestamp`, `status_follow_edge`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,16 +61,30 @@ impl DecodableResultExt for S200BResult {
 }
 
 /// S200B Rotation log params.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
 #[allow(missing_docs)]
 pub struct S200BRotationParams {
     #[serde(rename = "rotate_deg")]
-    pub degrees: i16,
+    pub rotation_degrees: i16,
+}
+
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl S200BRotationParams {
+    /// Gets all the properties of this result as a dictionary.
+    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
+        let value = serde_json::to_value(self)
+            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
+
+        crate::python::serde_object_to_py_dict(py, &value)
+    }
 }
 
 /// S200B Log.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "event")]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
 #[allow(missing_docs)]
 pub enum S200BLog {
     Rotation {
@@ -86,4 +100,20 @@ pub enum S200BLog {
         id: u64,
         timestamp: u64,
     },
+    LowBattery {
+        id: u64,
+        timestamp: u64,
+    },
+}
+
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl S200BLog {
+    /// Gets all the properties of this result as a dictionary.
+    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
+        let value = serde_json::to_value(self)
+            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
+
+        crate::python::serde_object_to_py_dict(py, &value)
+    }
 }

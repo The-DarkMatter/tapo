@@ -1,8 +1,11 @@
-from tapo.responses import DeviceInfoColorLightResult, DeviceUsageResult
 from tapo.requests import Color, ColorLightSetDeviceInfoParams
+from tapo.responses import DeviceInfoColorLightResult, DeviceUsageResult
 
 class ColorLightHandler:
-    """Handler for the [L530](https://www.tapo.com/en/search/?q=L530) and [L630](https://www.tapo.com/en/search/?q=L630) devices."""
+    """Handler for the [L530](https://www.tapo.com/en/search/?q=L530),
+    [L535](https://www.tapo.com/en/search/?q=L535) and
+    [L630](https://www.tapo.com/en/search/?q=L630) devices.
+    """
 
     def __init__(self, handler: object):
         """Private constructor.
@@ -37,7 +40,7 @@ class ColorLightHandler:
         try `ColorLightHandler.get_device_info_json`.
 
         Returns:
-            DeviceInfoColorLightResult: Device info of Tapo L530, L630 and L900.
+            DeviceInfoColorLightResult: Device info of Tapo L530, L535 and L630.
             Superset of `GenericDeviceInfoResult`.
         """
 
@@ -84,7 +87,7 @@ class ColorLightHandler:
         """Sets the *hue*, *saturation* and turns *on* the device.
 
         Args:
-            hue (int): between 1 and 360
+            hue (int): between 0 and 360
             saturation (int): between 1 and 100
         """
 
