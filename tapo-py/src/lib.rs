@@ -8,7 +8,7 @@ use log::LevelFilter;
 use pyo3::prelude::*;
 use pyo3_log::{Caching, Logger};
 
-use tapo::requests::{Color, LightingEffectPreset, LightingEffectType};
+use tapo::requests::{AlarmRingtone, AlarmVolume, Color, LightingEffectPreset, LightingEffectType};
 use tapo::responses::{
     AutoOffStatus, ColorLightState, CurrentPowerResult, DefaultBrightnessState,
     DefaultColorLightState, DefaultLightState, DefaultPlugState, DefaultPowerType,
@@ -19,18 +19,20 @@ use tapo::responses::{
     DeviceUsageEnergyMonitoringResult, DeviceUsageResult, EnergyDataResult, EnergyUsageResult,
     KE100Result, OvercurrentStatus, OverheatStatus, PlugState, PowerProtectionStatus,
     PowerStripPlugResult, RgbLightStripState, RgbicLightStripState, S200BLog, S200BResult,
-    S200BRotationParams, Status, T100Log, T100Result, T110Log, T110Result, T300Log, T300Result,
-    T31XResult, TemperatureHumidityRecord, TemperatureHumidityRecords, TemperatureUnit,
+    S200BRotationParams, Status, T31XResult, T100Log, T100Result, T110Log, T110Result, T300Log,
+    T300Result, TemperatureHumidityRecord, TemperatureHumidityRecords, TemperatureUnit,
     TemperatureUnitKE100, UsageByPeriodResult, WaterLeakStatus,
 };
 
 use api::{
     PyApiClient, PyColorLightHandler, PyGenericDeviceHandler, PyHubHandler, PyKE100Handler,
     PyLightHandler, PyPlugEnergyMonitoringHandler, PyPlugHandler, PyPowerStripHandler,
-    PyPowerStripPlugHandler, PyRgbLightStripHandler, PyRgbicLightStripHandler, PyT100Handler,
-    PyT110Handler, PyT300Handler, PyT31XHandler,
+    PyPowerStripPlugHandler, PyRgbLightStripHandler, PyRgbicLightStripHandler, PyT31XHandler,
+    PyT100Handler, PyT110Handler, PyT300Handler,
 };
-use requests::{PyColorLightSetDeviceInfoParams, PyEnergyDataInterval, PyLightingEffect};
+use requests::{
+    PyAlarmDuration, PyColorLightSetDeviceInfoParams, PyEnergyDataInterval, PyLightingEffect,
+};
 use responses::{
     TriggerLogsS200BResult, TriggerLogsT100Result, TriggerLogsT110Result, TriggerLogsT300Result,
 };
@@ -70,6 +72,11 @@ fn register_requests(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
     module.add_class::<LightingEffectType>()?;
     module.add_class::<PyColorLightSetDeviceInfoParams>()?;
     module.add_class::<PyEnergyDataInterval>()?;
+
+    // hub requests
+    module.add_class::<AlarmRingtone>()?;
+    module.add_class::<AlarmVolume>()?;
+    module.add_class::<PyAlarmDuration>()?;
     module.add_class::<TemperatureUnitKE100>()?;
 
     Ok(())
