@@ -1,25 +1,27 @@
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use async_trait::async_trait;
+use tokio::sync::{RwLock, RwLockReadGuard};
 
-use crate::api::ApiClient;
-use crate::api::PowerStripPlugHandler;
 use crate::error::Error;
 use crate::responses::{
     ChildDeviceListPowerStripResult, DeviceInfoPowerStripResult, PowerStripPlugResult,
 };
 
-/// Handler for the [P300](https://www.tapo.com/en/search/?q=P300) and
-/// [P304](https://www.tp-link.com/uk/search/?q=P304) devices.
+use super::{
+    ApiClient, ApiClientExt, DeviceManagementExt, HandlerExt, Plug, PowerStripPlugHandler,
+};
+
+/// Handler for the [P300](https://www.tp-link.com/en/search/?q=P300) and
+/// [P306](https://www.tp-link.com/us/search/?q=P306) devices.
+#[derive(Debug)]
 pub struct PowerStripHandler {
     client: Arc<RwLock<ApiClient>>,
 }
 
 impl PowerStripHandler {
-    pub(crate) fn new(client: ApiClient) -> Self {
-        Self {
-            client: Arc::new(RwLock::new(client)),
-        }
+    pub(crate) fn new(client: Arc<RwLock<ApiClient>>) -> Self {
+        Self { client }
     }
 
     /// Refreshes the authentication session.
@@ -126,12 +128,14 @@ impl PowerStripHandler {
     }
 }
 
-/// Power strip plug.
-pub enum Plug {
-    ///  By Device ID.
-    ByDeviceId(String),
-    /// By Nickname.
-    ByNickname(String),
-    /// By Position.
-    ByPosition(u8),
+#[async_trait]
+impl HandlerExt for PowerStripHandler {
+    async fn get_client(&self) -> RwLockReadGuard<'_, dyn ApiClientExt> {
+        RwLockReadGuard::map(
+            self.client.read().await,
+            |client: &ApiClient| -> &dyn ApiClientExt { client },
+        )
+    }
 }
+
+impl DeviceManagementExt for PowerStripHandler {}

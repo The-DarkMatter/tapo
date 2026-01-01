@@ -4,7 +4,7 @@ use std::sync::Arc;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use tapo::responses::DeviceInfoPowerStripResult;
-use tapo::{Error, Plug, PowerStripHandler};
+use tapo::{DeviceManagementExt as _, Error, Plug, PowerStripHandler};
 use tokio::sync::RwLock;
 
 use crate::api::PyPowerStripPlugHandler;
@@ -53,6 +53,23 @@ impl PyPowerStripHandler {
         )
     }
 
+    pub async fn device_reboot(&self, delay_s: u16) -> PyResult<()> {
+        let handler = self.inner.clone();
+        call_handler_method!(
+            handler.read().await.deref(),
+            PowerStripHandler::device_reboot,
+            delay_s
+        )
+    }
+
+    pub async fn device_reset(&self) -> PyResult<()> {
+        let handler = self.inner.clone();
+        call_handler_method!(
+            handler.read().await.deref(),
+            PowerStripHandler::device_reset,
+        )
+    }
+
     pub async fn get_device_info(&self) -> PyResult<DeviceInfoPowerStripResult> {
         let handler = self.inner.clone();
         call_handler_method!(
@@ -67,7 +84,7 @@ impl PyPowerStripHandler {
             handler.read().await.deref(),
             PowerStripHandler::get_device_info_json
         )?;
-        Python::with_gil(|py| tapo::python::serde_object_to_py_dict(py, &result))
+        Python::attach(|py| tapo::python::serde_object_to_py_dict(py, &result))
     }
 
     pub async fn get_child_device_list(&self) -> PyResult<Py<PyList>> {
@@ -77,7 +94,7 @@ impl PyPowerStripHandler {
             PowerStripHandler::get_child_device_list
         )?;
 
-        let results = Python::with_gil(|py| {
+        Python::attach(|py| {
             let results = PyList::empty(py);
 
             for child in children {
@@ -85,9 +102,7 @@ impl PyPowerStripHandler {
             }
 
             Ok(results.into())
-        });
-
-        results
+        })
     }
 
     pub async fn get_child_device_list_json(&self) -> PyResult<Py<PyDict>> {
@@ -96,7 +111,7 @@ impl PyPowerStripHandler {
             handler.read().await.deref(),
             PowerStripHandler::get_child_device_list_json
         )?;
-        Python::with_gil(|py| tapo::python::serde_object_to_py_dict(py, &result))
+        Python::attach(|py| tapo::python::serde_object_to_py_dict(py, &result))
     }
 
     pub async fn get_child_device_component_list_json(&self) -> PyResult<Py<PyDict>> {
@@ -105,7 +120,7 @@ impl PyPowerStripHandler {
             handler.read().await.deref(),
             PowerStripHandler::get_child_device_component_list_json
         )?;
-        Python::with_gil(|py| tapo::python::serde_object_to_py_dict(py, &result))
+        Python::attach(|py| tapo::python::serde_object_to_py_dict(py, &result))
     }
 
     #[pyo3(signature = (device_id=None, nickname=None, position=None))]

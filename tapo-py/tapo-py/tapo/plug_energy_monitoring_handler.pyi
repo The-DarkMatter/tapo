@@ -1,16 +1,19 @@
 from datetime import datetime
 
-from tapo.requests import EnergyDataInterval
+from tapo.device_management_ext import DeviceManagementExt
+from tapo.requests import EnergyDataInterval, PowerDataInterval
 from tapo.responses import (
     CurrentPowerResult,
     DeviceInfoPlugEnergyMonitoringResult,
     DeviceUsageEnergyMonitoringResult,
     EnergyDataResult,
     EnergyUsageResult,
+    PowerDataResult,
 )
 
-class PlugEnergyMonitoringHandler:
-    """Handler for the [P110](https://www.tapo.com/en/search/?q=P110) and
+class PlugEnergyMonitoringHandler(DeviceManagementExt):
+    """Handler for the [P110](https://www.tapo.com/en/search/?q=P110),
+    [P110M](https://www.tapo.com/en/search/?q=P110M) and
     [P115](https://www.tapo.com/en/search/?q=P115) devices.
     """
 
@@ -28,18 +31,6 @@ class PlugEnergyMonitoringHandler:
     async def off(self) -> None:
         """Turns *off* the device."""
 
-    async def device_reset(self) -> None:
-        """*Hardware resets* the device.
-
-        Warning:
-            This action will reset the device to its factory settings.
-            The connection to the Wi-Fi network and the Tapo app will be lost,
-            and the device will need to be reconfigured.
-
-        This feature is especially useful when the device is difficult to access
-        and requires reconfiguration.
-        """
-
     async def get_device_info(self) -> DeviceInfoPlugEnergyMonitoringResult:
         """Returns *device info* as `DeviceInfoPlugEnergyMonitoringResult`.
         It is not guaranteed to contain all the properties returned from the Tapo API.
@@ -47,7 +38,7 @@ class PlugEnergyMonitoringHandler:
         try `PlugEnergyMonitoringHandler.get_device_info_json`.
 
         Returns:
-            DeviceInfoPlugEnergyMonitoringResult: Device info of P110 and P115.
+            DeviceInfoPlugEnergyMonitoringResult: Device info of P110, P110M and P115.
             Superset of `GenericDeviceInfoResult`.
         """
 
@@ -59,19 +50,19 @@ class PlugEnergyMonitoringHandler:
             dict: Device info as a dictionary.
         """
 
+    async def get_current_power(self) -> CurrentPowerResult:
+        """Returns *current power* as `CurrentPowerResult`.
+
+        Returns:
+            CurrentPowerResult: Contains the current power reading of the device.
+        """
+
     async def get_device_usage(self) -> DeviceUsageEnergyMonitoringResult:
         """Returns *device usage* as `DeviceUsageResult`.
 
         Returns:
             DeviceUsageEnergyMonitoringResult:
             Contains the time usage, the power consumption, and the energy savings of the device.
-        """
-
-    async def get_current_power(self) -> CurrentPowerResult:
-        """Returns *current power* as `CurrentPowerResult`.
-
-        Returns:
-            CurrentPowerResult: Contains the current power reading of the device.
         """
 
     async def get_energy_usage(self) -> EnergyUsageResult:
@@ -91,5 +82,17 @@ class PlugEnergyMonitoringHandler:
         """Returns *energy data* as `EnergyDataResult`.
 
         Returns:
-            EnergyDataResult: Energy data for the requested `EnergyDataInterval`.
+            EnergyDataResult: Energy data result for the requested `EnergyDataInterval`.
+        """
+
+    async def get_power_data(
+        self,
+        interval: PowerDataInterval,
+        start_date_time: datetime,
+        end_date_time: datetime,
+    ) -> PowerDataResult:
+        """Returns *power data* as `PowerDataResult`.
+
+        Returns:
+            PowerDataResult: Power data result for the requested `PowerDataInterval`.
         """

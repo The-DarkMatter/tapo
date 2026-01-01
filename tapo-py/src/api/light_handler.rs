@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use tapo::LightHandler;
 use tapo::responses::{DeviceInfoLightResult, DeviceUsageEnergyMonitoringResult};
+use tapo::{DeviceManagementExt as _, LightHandler};
 use tokio::sync::RwLock;
 
 use crate::call_handler_method;
@@ -44,6 +44,15 @@ impl PyLightHandler {
         call_handler_method!(handler.read().await.deref(), LightHandler::off)
     }
 
+    pub async fn device_reboot(&self, delay_s: u16) -> PyResult<()> {
+        let handler = self.inner.clone();
+        call_handler_method!(
+            handler.read().await.deref(),
+            LightHandler::device_reboot,
+            delay_s
+        )
+    }
+
     pub async fn device_reset(&self) -> PyResult<()> {
         let handler = self.inner.clone();
         call_handler_method!(handler.read().await.deref(), LightHandler::device_reset)
@@ -60,7 +69,7 @@ impl PyLightHandler {
             handler.read().await.deref(),
             LightHandler::get_device_info_json
         )?;
-        Python::with_gil(|py| tapo::python::serde_object_to_py_dict(py, &result))
+        Python::attach(|py| tapo::python::serde_object_to_py_dict(py, &result))
     }
 
     pub async fn get_device_usage(&self) -> PyResult<DeviceUsageEnergyMonitoringResult> {

@@ -1,7 +1,10 @@
+from tapo.device_management_ext import DeviceManagementExt
 from tapo.responses import DeviceInfoLightResult, DeviceUsageResult
 
-class LightHandler:
-    """Handler for the [L510](https://www.tapo.com/en/search/?q=L510), [L520](https://www.tapo.com/en/search/?q=L520) and [L610](https://www.tapo.com/en/search/?q=L610) devices."""
+class LightHandler(DeviceManagementExt):
+    """Handler for the [L510](https://www.tapo.com/en/search/?q=L510),
+    [L520](https://www.tapo.com/en/search/?q=L520) and
+    [L610](https://www.tapo.com/en/search/?q=L610) devices."""
 
     def __init__(self, handler: object):
         """Private constructor.
@@ -16,18 +19,6 @@ class LightHandler:
 
     async def off(self) -> None:
         """Turns *off* the device."""
-
-    async def device_reset(self) -> None:
-        """*Hardware resets* the device.
-
-        Warning:
-            This action will reset the device to its factory settings.
-            The connection to the Wi-Fi network and the Tapo app will be lost,
-            and the device will need to be reconfigured.
-
-        This feature is especially useful when the device is difficult to access
-        and requires reconfiguration.
-        """
 
     async def get_device_info(self) -> DeviceInfoLightResult:
         """Returns *device info* as `DeviceInfoLightResult`.

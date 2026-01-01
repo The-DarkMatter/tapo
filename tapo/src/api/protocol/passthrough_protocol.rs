@@ -3,10 +3,9 @@ use std::fmt;
 use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose};
 use log::{debug, trace};
-use rand::SeedableRng;
-use rand::rngs::StdRng;
 use reqwest::Client;
 use reqwest::header::COOKIE;
+use rsa::rand_core::OsRng;
 use serde::de::DeserializeOwned;
 
 use crate::api::protocol::TapoProtocol;
@@ -73,7 +72,7 @@ impl TapoProtocolExt for PassthroughProtocol {
                 session
                     .token
                     .as_ref()
-                    .ok_or_else(|| anyhow::anyhow!("Token shouldn not be None"))?
+                    .ok_or_else(|| anyhow::anyhow!("Token should not be None"))?
             )
         } else {
             session.url.clone()
@@ -134,7 +133,7 @@ impl PassthroughProtocol {
     pub fn new(client: Client) -> Result<Self, Error> {
         Ok(Self {
             client,
-            key_pair: PassthroughKeyPair::new(StdRng::from_entropy())?,
+            key_pair: PassthroughKeyPair::new(OsRng)?,
             session: None,
         })
     }
@@ -178,7 +177,7 @@ impl PassthroughProtocol {
         let username = general_purpose::STANDARD.encode(username_digest);
         let password = general_purpose::STANDARD.encode(password);
 
-        debug!("Will login with username '{}'...", username);
+        debug!("Will login with username '{username}'...");
 
         let params = TapoParams::new(LoginDeviceParams::new(&username, &password))
             .set_request_time_mils()?;

@@ -1,19 +1,14 @@
-/// P300 and P304 Example
+/// P300 and P306 Example
 use std::{env, thread, time::Duration};
 
-use log::{LevelFilter, info};
+use log::info;
 use tapo::{ApiClient, Plug};
+
+mod common;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let log_level = env::var("RUST_LOG")
-        .unwrap_or_else(|_| "info".to_string())
-        .parse()
-        .unwrap_or(LevelFilter::Info);
-
-    pretty_env_logger::formatted_timed_builder()
-        .filter(Some("tapo"), log_level)
-        .init();
+    common::setup_logger();
 
     let tapo_username = env::var("TAPO_USERNAME")?;
     let tapo_password = env::var("TAPO_PASSWORD")?;
@@ -28,12 +23,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Getting child devices...");
     let child_device_list = power_strip.get_child_device_list().await?;
+    info!("Found {} plugs", child_device_list.len());
 
-    for child in child_device_list {
-        info!(
-            "Found plug with nickname: {}, id: {}, state: {}.",
-            child.nickname, child.device_id, child.device_on,
-        );
+    for (index, child) in child_device_list.into_iter().enumerate() {
+        info!("=== ({}) {} ===", index + 1, child.nickname);
+        info!("Device ID: {}", child.device_id);
+        info!("State: {}", child.device_on);
 
         let plug = power_strip.plug(Plug::ByDeviceId(child.device_id)).await?;
 

@@ -1,14 +1,15 @@
-from typing import Optional
+from typing import Optional, Union
 
-from tapo.responses.device_info_result.default_state import DefaultStateType
+from tapo.responses.device_info_result.default_plug_state import Custom, LastStates
 from tapo.responses.device_info_result.power_status import (
+    ChargingStatus,
     OvercurrentStatus,
     OverheatStatus,
     PowerProtectionStatus,
 )
 
 class DeviceInfoPlugEnergyMonitoringResult:
-    """Device info of Tapo P110 and P115. Superset of `GenericDeviceInfoResult`."""
+    """Device info of Tapo P110, P110M and P115. Superset of `GenericDeviceInfoResult`."""
 
     device_id: str
     type: str
@@ -37,10 +38,11 @@ class DeviceInfoPlugEnergyMonitoringResult:
     time_diff: Optional[int]
 
     # Unique to this device
-    default_states: DefaultPlugState
+    charging_status: ChargingStatus
+    default_states: Union[LastStates, Custom]
     """The default state of a device to be used when internet connectivity is lost after a power cut."""
     overcurrent_status: OvercurrentStatus
-    overheat_status: OverheatStatus
+    overheat_status: Optional[OverheatStatus]
     power_protection_status: PowerProtectionStatus
 
     def to_dict(self) -> dict:
@@ -49,14 +51,3 @@ class DeviceInfoPlugEnergyMonitoringResult:
         Returns:
             dict: The result as a dictionary.
         """
-
-class DefaultPlugState:
-    """Default Plug State."""
-
-    type: DefaultStateType
-    state: PlugState
-
-class PlugState:
-    """Plug State."""
-
-    on: Optional[bool]

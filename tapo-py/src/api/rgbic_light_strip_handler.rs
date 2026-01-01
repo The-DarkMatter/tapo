@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use tapo::requests::{Color, LightingEffect, LightingEffectPreset};
 use tapo::responses::{DeviceInfoRgbicLightStripResult, DeviceUsageEnergyMonitoringResult};
-use tapo::{HandlerExt, RgbicLightStripHandler};
+use tapo::{DeviceManagementExt as _, HandlerExt, RgbicLightStripHandler};
 use tokio::sync::RwLock;
 
 use crate::api::PyHandlerExt;
@@ -28,7 +28,7 @@ impl PyRgbicLightStripHandler {
 }
 
 impl PyHandlerExt for PyRgbicLightStripHandler {
-    fn get_inner_handler(&self) -> Arc<RwLock<(impl HandlerExt + 'static)>> {
+    fn get_inner_handler(&self) -> Arc<RwLock<impl HandlerExt + 'static>> {
         Arc::clone(&self.inner)
     }
 }
@@ -54,11 +54,20 @@ impl PyRgbicLightStripHandler {
         call_handler_method!(handler.read().await.deref(), RgbicLightStripHandler::off)
     }
 
+    pub async fn device_reboot(&self, delay_s: u16) -> PyResult<()> {
+        let handler = self.inner.clone();
+        call_handler_method!(
+            handler.read().await.deref(),
+            RgbicLightStripHandler::device_reboot,
+            delay_s
+        )
+    }
+
     pub async fn device_reset(&self) -> PyResult<()> {
         let handler = self.inner.clone();
         call_handler_method!(
             handler.read().await.deref(),
-            RgbicLightStripHandler::device_reset
+            RgbicLightStripHandler::device_reset,
         )
     }
 
@@ -76,7 +85,7 @@ impl PyRgbicLightStripHandler {
             handler.read().await.deref(),
             RgbicLightStripHandler::get_device_info_json,
         )?;
-        Python::with_gil(|py| tapo::python::serde_object_to_py_dict(py, &result))
+        Python::attach(|py| tapo::python::serde_object_to_py_dict(py, &result))
     }
 
     pub async fn get_device_usage(&self) -> PyResult<DeviceUsageEnergyMonitoringResult> {
@@ -141,13 +150,13 @@ impl PyRgbicLightStripHandler {
 
 fn map_lighting_effect(lighting_effect: Py<PyAny>) -> PyResult<LightingEffect> {
     if let Some(lighting_effect) =
-        Python::with_gil(|py| lighting_effect.extract::<LightingEffectPreset>(py).ok())
+        Python::attach(|py| lighting_effect.extract::<LightingEffectPreset>(py).ok())
     {
         return Ok(lighting_effect.into());
     }
 
     if let Some(lighting_effect) =
-        Python::with_gil(|py| lighting_effect.extract::<PyLightingEffect>(py).ok())
+        Python::attach(|py| lighting_effect.extract::<PyLightingEffect>(py).ok())
     {
         return Ok(lighting_effect.into());
     }

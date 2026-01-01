@@ -1,26 +1,32 @@
 use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use log::debug;
 use reqwest::Client;
 use serde::de::DeserializeOwned;
+use tokio::sync::RwLock;
 
-use crate::api::protocol::{TapoProtocol, TapoProtocolExt};
-use crate::api::{
-    ColorLightHandler, GenericDeviceHandler, HubHandler, LightHandler, PlugEnergyMonitoringHandler,
-    PlugHandler, PowerStripHandler, RgbLightStripHandler, RgbicLightStripHandler,
-};
 use crate::error::{Error, TapoResponseError};
 use crate::requests::{
-    ControlChildParams, EmptyParams, EnergyDataInterval, GetChildDeviceListParams,
-    GetEnergyDataParams, LightingEffect, MultipleRequestParams, PlayAlarmParams, TapoParams,
-    TapoRequest,
+    ControlChildParams, DeviceRebootParams, EmptyParams, EnergyDataInterval,
+    GetChildDeviceListParams, GetEnergyDataParams, GetPowerDataParams, LightingEffect,
+    MultipleRequestParams, PlayAlarmParams, PowerDataInterval, TapoParams, TapoRequest,
 };
 use crate::responses::{
     ControlChildResult, CurrentPowerResult, DecodableResultExt, EnergyDataResult,
-    EnergyUsageResult, SupportedAlarmTypeListResult, TapoMultipleResponse, TapoResponseExt,
-    TapoResult, validate_response,
+    EnergyDataResultRaw, EnergyUsageResult, PowerDataResult, PowerDataResultRaw,
+    SupportedAlarmTypeListResult, TapoMultipleResponse, TapoResponseExt, TapoResult,
+    validate_response,
+};
+
+use super::discovery::DeviceDiscovery;
+use super::protocol::{TapoProtocol, TapoProtocolExt};
+use super::{
+    ColorLightHandler, GenericDeviceHandler, HubHandler, LightHandler, PlugEnergyMonitoringHandler,
+    PlugHandler, PowerStripEnergyMonitoringHandler, PowerStripHandler, RgbLightStripHandler,
+    RgbicLightStripHandler,
 };
 
 const TERMINAL_UUID: &str = "00-00-00-00-00-00";
@@ -28,8 +34,12 @@ const TERMINAL_UUID: &str = "00-00-00-00-00-00";
 /// Implemented by all ApiClient implementations.
 #[async_trait]
 pub trait ApiClientExt: std::fmt::Debug + Send + Sync {
-    /// Sets the device info.
+    /// Sets device info by sending the given parameters.
     async fn set_device_info(&self, device_info_params: serde_json::Value) -> Result<(), Error>;
+    /// Reboots the device.
+    async fn device_reboot(&self, delay_s: u16) -> Result<(), Error>;
+    /// Hardware resets the device.
+    async fn device_reset(&self) -> Result<(), Error>;
 }
 
 /// Tapo API Client. See [examples](https://github.com/mihai-dinculescu/tapo/tree/main/tapo/examples).
@@ -89,6 +99,29 @@ impl ApiClient {
         self.timeout = Some(timeout);
         self
     }
+
+    /// Discovers one or more devices located at a specified unicast or broadcast IP address.
+    ///
+    /// # Arguments
+    /// * `target` - The IP address at which the discovery will take place.
+    ///   This address can be either a unicast (e.g. `192.168.1.10`) or a
+    ///   broadcast address (e.g. `192.168.1.255`, `255.255.255.255`, etc.).
+    /// * `timeout_s` - The maximum time to wait for a response from the device(s) in seconds.
+    ///   Must be between `1` and `60`.
+    pub async fn discover_devices(
+        self,
+        target: impl Into<String>,
+        timeout_s: u64,
+    ) -> Result<DeviceDiscovery, Error> {
+        if !(1..=60).contains(&timeout_s) {
+            return Err(Error::Validation {
+                field: "timeout_s".to_string(),
+                message: "Must be between 1 and 60 seconds".to_string(),
+            });
+        }
+
+        Ok(DeviceDiscovery::new(self, target, Duration::from_secs(timeout_s)).await?)
+    }
 }
 
 /// Device handler builders.
@@ -118,7 +151,7 @@ impl ApiClient {
     ) -> Result<GenericDeviceHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(GenericDeviceHandler::new(self))
+        Ok(GenericDeviceHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`LightHandler`].
@@ -143,7 +176,7 @@ impl ApiClient {
     pub async fn l510(mut self, ip_address: impl Into<String>) -> Result<LightHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(LightHandler::new(self))
+        Ok(LightHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`LightHandler`].
@@ -168,7 +201,7 @@ impl ApiClient {
     pub async fn l520(mut self, ip_address: impl Into<String>) -> Result<LightHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(LightHandler::new(self))
+        Ok(LightHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`ColorLightHandler`].
@@ -193,7 +226,7 @@ impl ApiClient {
     pub async fn l530(mut self, ip_address: impl Into<String>) -> Result<ColorLightHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(ColorLightHandler::new(self))
+        Ok(ColorLightHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`ColorLightHandler`].
@@ -218,7 +251,7 @@ impl ApiClient {
     pub async fn l535(mut self, ip_address: impl Into<String>) -> Result<ColorLightHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(ColorLightHandler::new(self))
+        Ok(ColorLightHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`LightHandler`].
@@ -243,7 +276,7 @@ impl ApiClient {
     pub async fn l610(mut self, ip_address: impl Into<String>) -> Result<LightHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(LightHandler::new(self))
+        Ok(LightHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`ColorLightHandler`].
@@ -268,7 +301,7 @@ impl ApiClient {
     pub async fn l630(mut self, ip_address: impl Into<String>) -> Result<ColorLightHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(ColorLightHandler::new(self))
+        Ok(ColorLightHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`RgbLightStripHandler`].
@@ -296,7 +329,7 @@ impl ApiClient {
     ) -> Result<RgbLightStripHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(RgbLightStripHandler::new(self))
+        Ok(RgbLightStripHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`RgbicLightStripHandler`].
@@ -324,7 +357,7 @@ impl ApiClient {
     ) -> Result<RgbicLightStripHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(RgbicLightStripHandler::new(self))
+        Ok(RgbicLightStripHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`RgbicLightStripHandler`].
@@ -352,7 +385,7 @@ impl ApiClient {
     ) -> Result<RgbicLightStripHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(RgbicLightStripHandler::new(self))
+        Ok(RgbicLightStripHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`PlugHandler`].
@@ -377,7 +410,7 @@ impl ApiClient {
     pub async fn p100(mut self, ip_address: impl Into<String>) -> Result<PlugHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(PlugHandler::new(self))
+        Ok(PlugHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`PlugHandler`].
@@ -402,7 +435,7 @@ impl ApiClient {
     pub async fn p105(mut self, ip_address: impl Into<String>) -> Result<PlugHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(PlugHandler::new(self))
+        Ok(PlugHandler::new(Arc::new(RwLock::new(self))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`PlugEnergyMonitoringHandler`].
@@ -430,7 +463,9 @@ impl ApiClient {
     ) -> Result<PlugEnergyMonitoringHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(PlugEnergyMonitoringHandler::new(self))
+        Ok(PlugEnergyMonitoringHandler::new(Arc::new(RwLock::new(
+            self,
+        ))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`PlugEnergyMonitoringHandler`].
@@ -458,7 +493,9 @@ impl ApiClient {
     ) -> Result<PlugEnergyMonitoringHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(PlugEnergyMonitoringHandler::new(self))
+        Ok(PlugEnergyMonitoringHandler::new(Arc::new(RwLock::new(
+            self,
+        ))))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripHandler`].
@@ -484,10 +521,10 @@ impl ApiClient {
     pub async fn p300(mut self, ip_address: impl Into<String>) -> Result<PowerStripHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(PowerStripHandler::new(self))
+        Ok(PowerStripHandler::new(Arc::new(RwLock::new(self))))
     }
 
-    /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripHandler`].
+    /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripEnergyMonitoringHandler`].
     ///
     /// # Arguments
     ///
@@ -507,10 +544,72 @@ impl ApiClient {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn p304(mut self, ip_address: impl Into<String>) -> Result<PowerStripHandler, Error> {
+    pub async fn p304(
+        mut self,
+        ip_address: impl Into<String>,
+    ) -> Result<PowerStripEnergyMonitoringHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(PowerStripHandler::new(self))
+        Ok(PowerStripEnergyMonitoringHandler::new(Arc::new(
+            RwLock::new(self),
+        )))
+    }
+
+    /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripHandler`].
+    ///
+    /// # Arguments
+    ///
+    /// * `ip_address` - the IP address of the device
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use tapo::ApiClient;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let device = ApiClient::new("tapo-username@example.com", "tapo-password")
+    ///     .p306("192.168.1.100")
+    ///     .await?;
+    /// let child_device_list = device.get_child_device_list().await?;
+    /// println!("Child device list: {child_device_list:?}");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn p306(mut self, ip_address: impl Into<String>) -> Result<PowerStripHandler, Error> {
+        self.login(ip_address).await?;
+
+        Ok(PowerStripHandler::new(Arc::new(RwLock::new(self))))
+    }
+
+    /// Specializes the given [`ApiClient`] into an authenticated [`PowerStripEnergyMonitoringHandler`].
+    ///
+    /// # Arguments
+    ///
+    /// * `ip_address` - the IP address of the device
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use tapo::ApiClient;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let device = ApiClient::new("tapo-username@example.com", "tapo-password")
+    ///     .p316("192.168.1.100")
+    ///     .await?;
+    /// let child_device_list = device.get_child_device_list().await?;
+    /// println!("Child device list: {child_device_list:?}");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn p316(
+        mut self,
+        ip_address: impl Into<String>,
+    ) -> Result<PowerStripEnergyMonitoringHandler, Error> {
+        self.login(ip_address).await?;
+
+        Ok(PowerStripEnergyMonitoringHandler::new(Arc::new(
+            RwLock::new(self),
+        )))
     }
 
     /// Specializes the given [`ApiClient`] into an authenticated [`HubHandler`].
@@ -537,7 +636,7 @@ impl ApiClient {
     pub async fn h100(mut self, ip_address: impl Into<String>) -> Result<HubHandler, Error> {
         self.login(ip_address).await?;
 
-        Ok(HubHandler::new(self))
+        Ok(HubHandler::new(Arc::new(RwLock::new(self))))
     }
 }
 
@@ -570,7 +669,7 @@ impl ApiClient {
         let request = TapoRequest::GetSupportedAlarmTypeList(TapoParams::new(EmptyParams));
 
         self.get_protocol()?
-            .execute_request::<SupportedAlarmTypeListResult>(request, true)
+            .execute_request(request, true)
             .await?
             .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
     }
@@ -587,17 +686,6 @@ impl ApiClient {
 
     pub(crate) async fn stop_alarm(&self) -> Result<(), Error> {
         let request = TapoRequest::StopAlarm(TapoParams::new(EmptyParams));
-
-        self.get_protocol()?
-            .execute_request::<serde_json::Value>(request, true)
-            .await?;
-
-        Ok(())
-    }
-
-    pub(crate) async fn device_reset(&self) -> Result<(), Error> {
-        debug!("Device reset...");
-        let request = TapoRequest::DeviceReset(TapoParams::new(EmptyParams));
 
         self.get_protocol()?
             .execute_request::<serde_json::Value>(request, true)
@@ -628,7 +716,7 @@ impl ApiClient {
         let request = TapoRequest::GetDeviceUsage(TapoParams::new(EmptyParams));
 
         self.get_protocol()?
-            .execute_request::<R>(request, true)
+            .execute_request(request, true)
             .await?
             .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
     }
@@ -657,7 +745,17 @@ impl ApiClient {
         let request = TapoRequest::GetEnergyUsage(TapoParams::new(EmptyParams));
 
         self.get_protocol()?
-            .execute_request::<EnergyUsageResult>(request, true)
+            .execute_request(request, true)
+            .await?
+            .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
+    }
+
+    pub(crate) async fn get_current_power(&self) -> Result<CurrentPowerResult, Error> {
+        debug!("Get Current power...");
+        let request = TapoRequest::GetCurrentPower(TapoParams::new(EmptyParams));
+
+        self.get_protocol()?
+            .execute_request(request, true)
             .await?
             .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
     }
@@ -671,19 +769,25 @@ impl ApiClient {
         let request = TapoRequest::GetEnergyData(TapoParams::new(params));
 
         self.get_protocol()?
-            .execute_request::<EnergyDataResult>(request, true)
+            .execute_request::<EnergyDataResultRaw>(request, true)
             .await?
             .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
+            .map(|result| result.try_into())?
     }
 
-    pub(crate) async fn get_current_power(&self) -> Result<CurrentPowerResult, Error> {
-        debug!("Get Current power...");
-        let request = TapoRequest::GetCurrentPower(TapoParams::new(EmptyParams));
+    pub(crate) async fn get_power_data(
+        &self,
+        interval: PowerDataInterval,
+    ) -> Result<PowerDataResult, Error> {
+        debug!("Get Power data...");
+        let params = GetPowerDataParams::new(interval);
+        let request = TapoRequest::GetPowerData(TapoParams::new(params));
 
         self.get_protocol()?
-            .execute_request::<CurrentPowerResult>(request, true)
+            .execute_request::<PowerDataResultRaw>(request, true)
             .await?
             .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
+            .map(|result| result.try_into())?
     }
 
     pub(crate) async fn get_child_device_list<R>(&self, start_index: u64) -> Result<R, Error>
@@ -791,6 +895,28 @@ impl ApiClientExt for ApiClient {
 
         self.get_protocol()?
             .execute_request::<TapoResult>(set_device_info_request, true)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn device_reboot(&self, delay: u16) -> Result<(), Error> {
+        debug!("Device reboot...");
+        let request = TapoRequest::DeviceReboot(TapoParams::new(DeviceRebootParams::new(delay)));
+
+        self.get_protocol()?
+            .execute_request::<serde_json::Value>(request, true)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn device_reset(&self) -> Result<(), Error> {
+        debug!("Device reset...");
+        let request = TapoRequest::DeviceReset(TapoParams::new(EmptyParams));
+
+        self.get_protocol()?
+            .execute_request::<serde_json::Value>(request, true)
             .await?;
 
         Ok(())

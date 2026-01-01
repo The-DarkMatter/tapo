@@ -4,64 +4,250 @@ All notable changes to this project will be documented in this
 file. This change log follows the conventions of
 [keepachangelog.com][keepachangelog].
 
-## [Unreleased][Unreleased]
+## [Rust Unreleased][Unreleased]
 
-### Rust
+## [Python Unreleased][Unreleased]
 
-### Python
+## [Rust v0.8.8][v0.8.8] - 2025-11-23
 
-## [v0.8.1][v0.8.1] - 2025-02-10
+### Added
 
-### Rust
+- `TapoResponseError`: added `Forbidden` variant to represent authentication failures when Third-Party Compatibility is disabled in the Tapo app.
 
-#### Added
+### Changed
+
+- `TapoResponseError`: renamed variant `InvalidCredentials` to `Unauthorized` and updated the variant to include `code` and `description` for improved error context.
+
+## [Python v0.8.8][v0.8.8] - 2025-11-23
+
+### Added
+
+- `Tapo` Exception: added `Forbidden` variant to represent authentication failures when Third-Party Compatibility is disabled in the Tapo app.
+
+### Changed
+
+- `Tapo` Exception: renamed variant `InvalidCredentials` to `Unauthorized` and updated the variant to include `code` and `description` for improved error context.
+
+### Removed
+
+- Dropped support for Python 3.9 and 3.10 (both no longer supported upstream). The minimum required version is now Python 3.11.
+
+## [Rust v0.8.7][v0.8.7] - 2025-11-01
+
+### Added
+- `HubHandler`: added the `device_reboot` and `device_reset` methods.
+- `PowerStripEnergyMonitoringHandler`: added the `device_reboot` and `device_reset` methods.
+- `PowerStripHandler`: added the `device_reboot` and `device_reset` methods.
+- `ColorLightHandler`: added the `device_reboot` method.
+- `LightHandler`: added the `device_reboot` method.
+- `PlugEnergyMonitoringHandler`: added the `device_reboot` method.
+- `PlugHandler`: added the `device_reboot` method.
+- `RgbicLightStripHandler`: added the `device_reboot` method.
+- `RgbLightStripHandler`: added the `device_reboot` method.
+
+### Changed
+
+- `device_reset`: now requires the `DeviceManagementExt` trait to be in scope. The newly added `device_reboot` method also requires this trait.
+
+## [Python v0.8.7][v0.8.7] - 2025-11-01
+
+### Added
+
+- `tapo`: added support for Python 3.14.
+- `HubHandler`: added the `device_reboot` and `device_reset` methods.
+- `PowerStripEnergyMonitoringHandler`: added the `device_reboot` and `device_reset` methods.
+- `PowerStripHandler`: added the `device_reboot` and `device_reset` methods.
+- `ColorLightHandler`: added the `device_reboot` method.
+- `LightHandler`: added the `device_reboot` method.
+- `PlugEnergyMonitoringHandler`: added the `device_reboot` method.
+- `PlugHandler`: added the `device_reboot` method.
+- `RgbicLightStripHandler`: added the `device_reboot` method.
+- `RgbLightStripHandler`: added the `device_reboot` method.
+
+## [Rust v0.8.6][v0.8.6] - 2025-09-25
+
+### Added
+
+- `PlugEnergyMonitoringHandler`: added `get_power_data` method to retrieve historical power data (every 5 minutes & hourly) for energy-monitoring plugs (P110, P110M, P115). The `PowerDataInterval` enum allows specifying the desired interval.
+- `PowerStripPlugEnergyMonitoringHandler`: added the following energy monitoring methods: `get_current_power`, `get_device_usage`, `get_energy_usage`, `get_energy_data`, `get_power_data`.
+
+### Changed
+
+- `PlugEnergyMonitoringHandler`: `EnergyDataResult` has been redesigned to provide better ergonomics by attaching a start date time to each interval entry.
+
+### Removed
+
+- `EnergyUsageResult`: the `current_power` field has been removed from the struct because not all energy-monitoring plugs provide this data. Instead, use the `get_current_power` method to retrieve the current power.
+
+## [Python v0.8.6][v0.8.6] - 2025-09-25
+
+### Added
+
+- `PlugEnergyMonitoringHandler`: added `get_power_data` method to retrieve historical power data (every 5 minutes & hourly) for energy-monitoring plugs (P110, P110M, P115). The `PowerDataInterval` enum allows specifying the desired interval.
+- `PowerStripPlugEnergyMonitoringHandler`: added the following energy monitoring methods: `get_current_power`, `get_device_usage`, `get_energy_usage`, `get_energy_data`, `get_power_data`.
+
+### Changed
+
+- `PlugEnergyMonitoringHandler`: `EnergyDataResult` has been redesigned to provide better ergonomics by attaching a start date time to each interval entry.
+
+### Removed
+
+- `EnergyUsageResult`: the `current_power` field has been removed from the class because not all energy-monitoring plugs provide this data. Instead, use the `get_current_power` method to retrieve the current power.
+
+## [Rust v0.8.5][v0.8.5] - 2025-09-18
+
+### Added
+
+- `ApiClient`: added `discover_devices` method to discover all Tapo devices on the local network. This works even with dynamic or unknown IPs, but is slower since it scans the entire network and waits for device responses.
+- `PowerStripPlugHandler`: added support for P306 power strips.
+- Added `PowerStripEnergyMonitoringHandler`, `PowerStripPlugEnergyMonitoringHandler`, and `PowerStripPlugEnergyMonitoringResult` to support energy-monitoring power strips (P304M, P316M). Non-monitoring models (P300, P306) will continue using the pre-existing `PowerStripPlugHandler`.
+- `PowerStripPlugResult`: added `default_states` field.
+
+### Changed
+
+- `DeviceInfoPowerStripResult`: changed `time_diff` from `Option<i64>` to `i64`.
+
+### Fixed
+
+- `PowerStripPlugResult`: removed `charging_status`, `overcurrent_status`, and `power_protection_status` (not returned by P300/P306).
+
+## [Python v0.8.5][v0.8.5] - 2025-09-18
+
+### Added
+
+- `ApiClient`: added `discover_devices` method to discover all Tapo devices on the local network. This works even with dynamic or unknown IPs, but is slower since it scans the entire network and waits for device responses.
+- `PowerStripPlugHandler`: added support for P306 power strips.
+- Added `PowerStripEnergyMonitoringHandler`, `PowerStripPlugEnergyMonitoringHandler`, and `PowerStripPlugEnergyMonitoringResult` to support energy-monitoring power strips (P304M, P316M). Non-monitoring models (P300, P306) will continue using the pre-existing `PowerStripPlugHandler`.
+- `PowerStripPlugResult`: added `default_states` field.
+
+### Changed
+
+- `DeviceInfoPowerStripResult`: changed `time_diff` from `Optional[int]` to `int`.
+
+### Fixed
+
+- `PowerStripPlugResult`: removed `charging_status`, `overcurrent_status`, and `power_protection_status` (not returned by P300/P306).
+
+## [Rust v0.8.4][v0.8.4] - 2025-08-11
+
+### Added
+
+- The `default_states` property has been added to the `DeviceInfoPlugResult` struct to provide a more comprehensive overview of the plug's state.
+
+### Fixed
+
+- The `default_states` property value of the `DeviceInfoPlugEnergyMonitoringResult` struct has been changed from a struct to an enum to better reflect the actual response from the device.
+
+## [Python v0.8.4][v0.8.4] - 2025-08-11
+
+### Added
+
+- The `default_states` property has been added to the `DeviceInfoPlugResult` class to provide a more comprehensive overview of the plug's state.
+
+### Fixed
+
+- The `default_states` property value of the `DeviceInfoPlugEnergyMonitoringResult` class has been changed from a class to an enum to better reflect the actual response from the device.
+
+## [Rust v0.8.3][v0.8.3] - 2025-07-25
+
+### Added
+
+- Added support for the P316M power strips.
+- The `charging_status`, `overcurrent_status`, and `power_protection_status` fields have been added to `PowerStripPlugResult`.
+
+### Changed
+
+- Enhanced the `InvalidCredentials` error with clearer guidance on common causes and how to address them.
+- The `overheat_status` field in `PowerStripPlugResult` is now optional to support devices that omit this field.
+
+### Removed
+
+- Removed `nickname` from `DeviceInfoPowerStripResult` because it is not present in the response.
+
+## [Python v0.8.3][v0.8.3] - 2025-07-25
+
+### Added
+
+- Added support for the P316M power strips.
+- The `charging_status`, `overcurrent_status`, and `power_protection_status` fields have been added to `PowerStripPlugResult`.
+
+### Changed
+
+- Enhanced the `InvalidCredentials` error with clearer guidance on common causes and how to address them.
+- The `overheat_status` field in `PowerStripPlugResult` is now optional to support devices that omit this field.
+
+### Removed
+
+- Removed `nickname` from `DeviceInfoPowerStripResult` because it is not present in the response.
+
+## [Rust v0.8.2][v0.8.2] - 2025-05-19
+
+### Added
+
+- The `charging_status` field has been added to `DeviceInfoPlugEnergyMonitoringResult`.
+
+### Changed
+
+- The `overheat_status` field in `DeviceInfoPlugEnergyMonitoringResult` is now optional to support devices that omit this field after the latest firmware update (1.3.4 Build 250403 Rel.150504).
+
+## [Python v0.8.2][v0.8.2] - 2025-05-19
+
+### Added
+
+- The `charging_status` field has been added to `DeviceInfoPlugEnergyMonitoringResult`.
+
+### Changed
+
+- The `overheat_status` field in `DeviceInfoPlugEnergyMonitoringResult` is now optional to support devices that omit this field after the latest firmware update (1.3.4 Build 250403 Rel.150504).
+
+## [Rust v0.8.1][v0.8.1] - 2025-02-10
+
+### Added
 
 - Added functionality for controlling the alarm on the H100 hub via the `play_alarm` and `stop_alarm` methods in the `H100Handler`. Additionally, `get_supported_ringtone_list` is available to retrieve the list of supported ringtones for debugging purposes. (thanks to @kay)
 - Added the ability to retrieve the color configuration (`hue`, `saturation`, `color_temperature`) for the `Color` enum values through the `get_color_config` method. (thanks to @WhySoBad)
 
-#### Changed
+### Changed
 
 - The internal implementation of `H100Handler`'s `get_child_device_list` has been updated to fetch all pages, not just the first one.
 - `H100Handler`'s `get_child_device_list_json` now includes a `start_index` parameter to fetch child devices starting from a specific index.
 
-#### Fixed
+### Fixed
 
 - Resolved an issue that caused the passthrough protocol test to incorrectly indicate support when it was not actually supported. (thanks to @WhySoBad)
 
-### Python
+## [Python v0.8.1][v0.8.1] - 2025-02-10
 
-#### Added
+### Added
 
 - Added functionality for controlling the alarm on the H100 hub via the `play_alarm` and `stop_alarm` methods in the `H100Handler`. Additionally, `get_supported_ringtone_list` is available to retrieve the list of supported ringtones for debugging purposes.
 - Added the ability to retrieve the color configuration (`hue`, `saturation`, `color_temperature`) for the `Color` enum values through the `get_color_config` method. (thanks to @WhySoBad)
 
-#### Changed
+### Changed
 
 - The internal implementation of `H100Handler`'s `get_child_device_list` has been updated to fetch all pages, not just the first one.
 - `H100Handler`'s `get_child_device_list_json` now includes a `start_index` parameter to fetch child devices starting from a specific index.
 
-#### Fixed
+### Fixed
 
 - Resolved an issue that caused the passthrough protocol test to incorrectly indicate support when it was not actually supported. (thanks to @WhySoBad)
 
-## [v0.8.0][v0.8.0] - 2024-12-07
+## [Rust v0.8.0][v0.8.0] - 2024-12-07
 
 This marks the first unified release of the Rust and Python libraries. Moving forward, both libraries will be released simultaneously and will share the same version number.
 
-### Rust
-
-#### Added
+### Added
 
 - Added an example for the L900 light strips.
 
-#### Changed
+### Changed
 
 - `LightingEffect`'s `fadeoff` field has been renamed to `fade_off`, and its `with_fadeoff` method has been renamed to `with_fade_off`.
 - `LightingEffect`'s `new_with_random_id` function has been removed. The `new` function now creates a `LightingEffect` instance with a random ID by default.
 
-### Python
+## [Python v0.8.0][v0.8.0] - 2024-12-07
 
-#### Added
+### Added
 
 - Added support for the L900 light strips.
 - Added support for the L920 and L930 light strips.
@@ -216,7 +402,7 @@ This marks the first unified release of the Rust and Python libraries. Moving fo
 ### Fixed
 
 - `ColorLightSetDeviceInfoParams` `hue` field validation has been changed from `between 1 and 360` to `between 0 and 360` to match the device's expected range.
-- Fixed an issue where the `EnergyDataResult's `start_timestamp` and `end_timestamp` did not correctly adjust for timezone offsets.
+- Fixed an issue where the `EnergyDataResult`'s `start_timestamp` and `end_timestamp` did not correctly adjust for timezone offsets.
 - The `chrono` dependency has been updated to `0.4.34` to fix the minimum version requirement.
 
 ### Removed
@@ -228,7 +414,7 @@ This marks the first unified release of the Rust and Python libraries. Moving fo
 ### Fixed
 
 - `ColorLightSetDeviceInfoParams` `hue` field validation has been changed from `between 1 and 360` to `between 0 and 360` to match the device's expected range.
-- Fixed an issue where the `EnergyDataResult's `start_timestamp` and `end_timestamp` did not correctly adjust for timezone offsets.
+- Fixed an issue where the `EnergyDataResult`'s `start_timestamp` and `end_timestamp` did not correctly adjust for timezone offsets.
 - All handlers are now correctly exported and can be imported from the `tapo` module.
 
 ### Removed
@@ -471,11 +657,13 @@ let device = ApiClient::new(tapo_username, tapo_password)?
 ## [v0.6.0] - 2023-05-08
 
 ### Added
+
 - Added support for the L920 and L930 light strips. The highlight is the `tapo::ColorLightStripHandler::set_lighting_effect` function, which supports all the effects that the Tapo app contains alongside user-defined effects.
 - Added support for the L900 light strips.
 - Each supported device now has it's own handler creator.
 
 ### Changed
+
 - `set_*` functions like `tapo::requests::ColorLightSetDeviceInfoParams::set_brightness` now return `Self` instead of `Result<Self, Error>` to allow for better ergonomics. The validations will now run when `tapo::requests::ColorLightSetDeviceInfoParams::send` is called.
 - `tapo::requests::L510SetDeviceInfoParams` has been renamed to `tapo::requests::LightSetDeviceInfoParams` to better reflect its purpose when used for L510, L610, and L900 devices.
 - `tapo::requests::L530SetDeviceInfoParams` has been renamed to `tapo::requests::ColorLightSetDeviceInfoParams` to better reflect its purpose when used for L530, L630, L920 and L930 devices.
@@ -518,15 +706,18 @@ let device = ApiClient::new(ip_address, tapo_username, tapo_password)?
 ## [v0.3.1] - 2023-02-19
 
 ### Added
+
 - `examples/tapo_generic_device_toggle.rs` demonstrates how `device_info` can be used to assess the current status of a generic device and toggle it.
 
 ### Changed
+
 - `on_time` is now optional for the `L510` and `L530` devices because the v2 hardware no longer returns it.
 
 ## [v0.3.0] - 2022-11-20
 
 ### Added
-- The `set` API allows multiple properties to be set in a single request for the *L510* and *L530* devices.
+
+- The `set` API allows multiple properties to be set in a single request for the _L510_ and _L530_ devices.
 
 ### Changed
 
@@ -561,6 +752,12 @@ let device = ApiClient::new(ip_address, tapo_username, tapo_password)?
 ### Initial Release of Tapo
 
 [Unreleased]: https://github.com/mihai-dinculescu/tapo
+[v0.8.7]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.7
+[v0.8.6]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.6
+[v0.8.5]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.5
+[v0.8.4]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.4
+[v0.8.3]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.3
+[v0.8.2]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.2
 [v0.8.1]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.1
 [v0.8.0]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.0
 [py-v0.7.0]: https://github.com/mihai-dinculescu/tapo/tree/py-v0.7.0

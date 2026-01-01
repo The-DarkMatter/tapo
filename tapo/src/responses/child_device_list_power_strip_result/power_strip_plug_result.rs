@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
-use crate::responses::device_info_result::OverheatStatus;
-use crate::responses::{DecodableResultExt, TapoResponseExt, decode_value};
+use crate::responses::{
+    DecodableResultExt, DefaultPlugState, OverheatStatus, TapoResponseExt, decode_value,
+};
+
+use super::AutoOffStatus;
 
 /// Power Strip child device list result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,10 +29,10 @@ impl DecodableResultExt for ChildDeviceListPowerStripResult {
 
 impl TapoResponseExt for ChildDeviceListPowerStripResult {}
 
-/// P300 and P304 power strip child plugs.
+/// P300 and P306 power strip child plugs.
 ///
 /// Specific properties: `auto_off_remain_time`, `auto_off_status`,
-/// `bind_count`, `overheat_status`, `position`, `slot_number`.
+/// `bind_count`, `default_states`, `overheat_status`, `position`, `slot_number`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
 #[allow(missing_docs)]
@@ -39,6 +42,7 @@ pub struct PowerStripPlugResult {
     pub avatar: String,
     pub bind_count: u8,
     pub category: String,
+    pub default_states: DefaultPlugState,
     pub device_id: String,
     pub device_on: bool,
     pub fw_id: String,
@@ -55,7 +59,7 @@ pub struct PowerStripPlugResult {
     /// The time in seconds this device has been ON since the last state change (On/Off).
     pub on_time: u64,
     pub original_device_id: String,
-    pub overheat_status: OverheatStatus,
+    pub overheat_status: Option<OverheatStatus>,
     pub position: u8,
     pub region: Option<String>,
     pub slot_number: u8,
@@ -82,14 +86,4 @@ impl DecodableResultExt for PowerStripPlugResult {
         self.nickname = decode_value(&self.nickname)?;
         Ok(self)
     }
-}
-
-/// Auto Off Status.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all, eq, eq_int))]
-#[allow(missing_docs)]
-pub enum AutoOffStatus {
-    On,
-    Off,
 }

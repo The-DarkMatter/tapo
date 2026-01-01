@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use tapo::requests::{AlarmDuration, AlarmRingtone, AlarmVolume};
 use tapo::responses::{ChildDeviceHubResult, DeviceInfoHubResult};
-use tapo::{Error, HubDevice, HubHandler};
+use tapo::{DeviceManagementExt as _, Error, HubDevice, HubHandler};
 use tokio::sync::RwLock;
 
 use crate::api::{
@@ -55,6 +55,20 @@ impl PyHubHandler {
         )
     }
 
+    pub async fn device_reboot(&self, delay_s: u16) -> PyResult<()> {
+        let handler = self.inner.clone();
+        call_handler_method!(
+            handler.read().await.deref(),
+            HubHandler::device_reboot,
+            delay_s
+        )
+    }
+
+    pub async fn device_reset(&self) -> PyResult<()> {
+        let handler = self.inner.clone();
+        call_handler_method!(handler.read().await.deref(), HubHandler::device_reset)
+    }
+
     pub async fn get_device_info(&self) -> PyResult<DeviceInfoHubResult> {
         let handler = self.inner.clone();
         call_handler_method!(handler.read().await.deref(), HubHandler::get_device_info)
@@ -66,7 +80,7 @@ impl PyHubHandler {
             handler.read().await.deref(),
             HubHandler::get_device_info_json
         )?;
-        Python::with_gil(|py| tapo::python::serde_object_to_py_dict(py, &result))
+        Python::attach(|py| tapo::python::serde_object_to_py_dict(py, &result))
     }
 
     pub async fn get_child_device_list(&self) -> PyResult<Py<PyList>> {
@@ -76,7 +90,7 @@ impl PyHubHandler {
             HubHandler::get_child_device_list
         )?;
 
-        let results = Python::with_gil(|py| {
+        Python::attach(|py| {
             let results = PyList::empty(py);
 
             for child in children {
@@ -109,9 +123,7 @@ impl PyHubHandler {
             }
 
             Ok(results.into())
-        });
-
-        results
+        })
     }
 
     pub async fn get_child_device_list_json(&self, start_index: u64) -> PyResult<Py<PyDict>> {
@@ -121,7 +133,7 @@ impl PyHubHandler {
             HubHandler::get_child_device_list_json,
             start_index
         )?;
-        Python::with_gil(|py| tapo::python::serde_object_to_py_dict(py, &result))
+        Python::attach(|py| tapo::python::serde_object_to_py_dict(py, &result))
     }
 
     pub async fn get_child_device_component_list_json(&self) -> PyResult<Py<PyDict>> {
@@ -130,7 +142,7 @@ impl PyHubHandler {
             handler.read().await.deref(),
             HubHandler::get_child_device_component_list_json
         )?;
-        Python::with_gil(|py| tapo::python::serde_object_to_py_dict(py, &result))
+        Python::attach(|py| tapo::python::serde_object_to_py_dict(py, &result))
     }
 
     pub async fn get_supported_ringtone_list(&self) -> PyResult<Vec<String>> {

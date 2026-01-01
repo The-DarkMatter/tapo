@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
-use crate::responses::{DecodableResultExt, TapoResponseExt, decode_value};
+use crate::responses::{DecodableResultExt, DefaultPlugState, TapoResponseExt, decode_value};
 
 /// Device info of Tapo P100 and P105. Superset of [`crate::responses::DeviceInfoGenericResult`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,6 +36,10 @@ pub struct DeviceInfoPlugResult {
     pub latitude: Option<i64>,
     pub longitude: Option<i64>,
     pub time_diff: Option<i64>,
+    //
+    // Unique to this device
+    //
+    pub default_states: DefaultPlugState,
 }
 
 #[cfg(feature = "python")]
@@ -54,8 +58,8 @@ impl TapoResponseExt for DeviceInfoPlugResult {}
 
 impl DecodableResultExt for DeviceInfoPlugResult {
     fn decode(mut self) -> Result<Self, Error> {
-        self.ssid = decode_value(&self.ssid)?;
         self.nickname = decode_value(&self.nickname)?;
+        self.ssid = decode_value(&self.ssid)?;
 
         Ok(self)
     }

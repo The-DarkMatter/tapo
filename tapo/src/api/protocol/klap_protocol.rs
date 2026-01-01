@@ -1,11 +1,10 @@
 use std::fmt;
 
 use async_trait::async_trait;
-use log::{debug, trace, warn};
-use rand::rngs::StdRng;
-use rand::{RngCore, SeedableRng};
-use reqwest::Client;
+use log::{debug, error, trace};
 use reqwest::header::COOKIE;
+use reqwest::{Client, StatusCode};
+use rsa::rand_core::{OsRng, RngCore as _};
 use serde::de::DeserializeOwned;
 
 use crate::api::protocol::TapoProtocol;
@@ -21,7 +20,7 @@ use super::klap_cipher::KlapCipher;
 pub(crate) struct KlapProtocol {
     client: Client,
     cookie: String,
-    rng: StdRng,
+    rng: OsRng,
     url: Option<String>,
     cipher: Option<KlapCipher>,
 }
@@ -69,10 +68,10 @@ impl TapoProtocolExt for KlapProtocol {
             .await?;
 
         if !response.status().is_success() {
-            warn!("Response error: {}", response.status());
+            error!("Response error: {}", response.status());
 
             let error = match response.status() {
-                reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN => {
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
                     TapoResponseError::SessionTimeout
                 }
                 _ => TapoResponseError::InvalidResponse,
@@ -105,7 +104,7 @@ impl KlapProtocol {
         Self {
             client,
             cookie: String::new(),
-            rng: StdRng::from_entropy(),
+            rng: OsRng,
             url: None,
             cipher: None,
         }
@@ -157,7 +156,15 @@ impl KlapProtocol {
             .await?;
 
         if !response.status().is_success() {
-            warn!("Handshake1 error: {}", response.status());
+            error!("Handshake1 error: {}", response.status());
+
+            if response.status() == StatusCode::FORBIDDEN {
+                return Err(Error::Tapo(TapoResponseError::Forbidden {
+                    code: "FORBIDDEN".to_string(),
+                    description: r"Make sure Third-Party Compatibility is turned on in the Tapo app. If it's already enabled, try switching it off and then back on again. You can find this option by navigating to Me > Third-Party Services in the app."
+                        .to_string(),
+                }));
+            }
             return Err(Error::Tapo(TapoResponseError::InvalidResponse));
         }
 
@@ -169,8 +176,11 @@ impl KlapProtocol {
         let local_hash = KlapCipher::sha256(&[local_seed, remote_seed, auth_hash].concat());
 
         if local_hash != server_hash {
-            warn!("Local hash does not match server hash");
-            return Err(Error::Tapo(TapoResponseError::InvalidCredentials));
+            error!("Local hash does not match server hash");
+            return Err(Error::Tapo(TapoResponseError::Unauthorized {
+                code: "HASH_MISMATCH".to_string(),
+                description: "The device response did not match the challenge issued by the library. Make sure that your email and password are correct -— both are case-sensitive. Before adding a new device, disconnect any existing TP-Link/Tapo devices on the network. The TP-Link Simple Setup (TSS) protocol, which shares credentials from previously configured devices, may interfere with authentication. If the problem continues, perform a factory reset on the new device and add it again with no other TP-Link devices active during setup.".to_string(),
+             }));
         }
 
         debug!("Handshake1 OK");
@@ -199,7 +209,7 @@ impl KlapProtocol {
             .await?;
 
         if !response.status().is_success() {
-            warn!("Handshake2 error: {}", response.status());
+            error!("Handshake2 error: {}", response.status());
             return Err(Error::Tapo(TapoResponseError::InvalidResponse));
         }
 
