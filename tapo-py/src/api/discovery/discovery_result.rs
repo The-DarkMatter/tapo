@@ -1,25 +1,19 @@
 use pyo3::prelude::*;
 use tapo::responses::{
-    DeviceInfoColorLightResult, DeviceInfoGenericResult, DeviceInfoHubResult,
+    DeviceInfoBasicResult, DeviceInfoCameraResult, DeviceInfoColorLightResult, DeviceInfoHubResult,
     DeviceInfoLightResult, DeviceInfoPlugEnergyMonitoringResult, DeviceInfoPlugResult,
     DeviceInfoPowerStripResult, DeviceInfoRgbLightStripResult, DeviceInfoRgbicLightStripResult,
 };
-use tapo::{DiscoveryResult, Error};
+use tapo::{DeviceType, DiscoveryError, DiscoveryResult};
 
 use crate::api::{
-    PyColorLightHandler, PyGenericDeviceHandler, PyHubHandler, PyLightHandler,
+    PyCameraPtzHandler, PyColorLightHandler, PyHubHandler, PyLightHandler,
     PyPlugEnergyMonitoringHandler, PyPlugHandler, PyPowerStripEnergyMonitoringHandler,
     PyPowerStripHandler, PyRgbLightStripHandler, PyRgbicLightStripHandler,
 };
-use crate::errors::ErrorWrapper;
-
 #[pyclass(name = "DiscoveryResult")]
 #[allow(clippy::large_enum_variant)]
 pub enum PyDiscoveryResult {
-    GenericDevice {
-        device_info: DeviceInfoGenericResult,
-        handler: PyGenericDeviceHandler,
-    },
     Light {
         device_info: DeviceInfoLightResult,
         handler: PyLightHandler,
@@ -56,12 +50,118 @@ pub enum PyDiscoveryResult {
         device_info: DeviceInfoHubResult,
         handler: PyHubHandler,
     },
+    CameraPtz {
+        device_info: DeviceInfoCameraResult,
+        handler: PyCameraPtzHandler,
+        ip: String,
+    },
+    Other {
+        device_info: DeviceInfoBasicResult,
+        ip: String,
+    },
+}
+
+#[pymethods]
+impl PyDiscoveryResult {
+    #[getter]
+    pub fn device_type(&self) -> DeviceType {
+        match self {
+            PyDiscoveryResult::Light { .. } => DeviceType::Light,
+            PyDiscoveryResult::ColorLight { .. } => DeviceType::ColorLight,
+            PyDiscoveryResult::RgbLightStrip { .. } => DeviceType::RgbLightStrip,
+            PyDiscoveryResult::RgbicLightStrip { .. } => DeviceType::RgbicLightStrip,
+            PyDiscoveryResult::Plug { .. } => DeviceType::Plug,
+            PyDiscoveryResult::PlugEnergyMonitoring { .. } => DeviceType::PlugEnergyMonitoring,
+            PyDiscoveryResult::PowerStrip { .. } => DeviceType::PowerStrip,
+            PyDiscoveryResult::PowerStripEnergyMonitoring { .. } => {
+                DeviceType::PowerStripEnergyMonitoring
+            }
+            PyDiscoveryResult::Hub { .. } => DeviceType::Hub,
+            PyDiscoveryResult::CameraPtz { .. } => DeviceType::CameraPtz,
+            PyDiscoveryResult::Other { .. } => DeviceType::Other,
+        }
+    }
+
+    #[getter]
+    pub fn model(&self) -> &str {
+        match self {
+            PyDiscoveryResult::Light { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::ColorLight { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::RgbLightStrip { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::RgbicLightStrip { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::Plug { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::PlugEnergyMonitoring { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::PowerStrip { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::PowerStripEnergyMonitoring { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::Hub { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::CameraPtz { device_info, .. } => &device_info.model,
+            PyDiscoveryResult::Other { device_info, .. } => &device_info.model,
+        }
+    }
+
+    #[getter]
+    pub fn ip(&self) -> &str {
+        match self {
+            PyDiscoveryResult::Light { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::ColorLight { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::RgbLightStrip { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::RgbicLightStrip { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::Plug { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::PlugEnergyMonitoring { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::PowerStrip { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::PowerStripEnergyMonitoring { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::Hub { device_info, .. } => &device_info.ip,
+            PyDiscoveryResult::CameraPtz { ip, .. } => ip,
+            PyDiscoveryResult::Other { ip, .. } => ip,
+        }
+    }
+
+    #[getter]
+    pub fn device_id(&self) -> &str {
+        match self {
+            PyDiscoveryResult::Light { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::ColorLight { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::RgbLightStrip { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::RgbicLightStrip { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::Plug { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::PlugEnergyMonitoring { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::PowerStrip { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::PowerStripEnergyMonitoring { device_info, .. } => {
+                &device_info.device_id
+            }
+            PyDiscoveryResult::Hub { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::CameraPtz { device_info, .. } => &device_info.device_id,
+            PyDiscoveryResult::Other { device_info, .. } => &device_info.device_id,
+        }
+    }
+
+    #[getter]
+    pub fn nickname(&self) -> &str {
+        match self {
+            PyDiscoveryResult::Light { device_info, .. } => &device_info.nickname,
+            PyDiscoveryResult::ColorLight { device_info, .. } => &device_info.nickname,
+            PyDiscoveryResult::RgbLightStrip { device_info, .. } => &device_info.nickname,
+            PyDiscoveryResult::RgbicLightStrip { device_info, .. } => &device_info.nickname,
+            PyDiscoveryResult::Plug { device_info, .. } => &device_info.nickname,
+            PyDiscoveryResult::PlugEnergyMonitoring { device_info, .. } => &device_info.nickname,
+            PyDiscoveryResult::PowerStrip { .. } => DeviceType::PowerStrip.as_str(),
+            PyDiscoveryResult::PowerStripEnergyMonitoring { .. } => {
+                DeviceType::PowerStripEnergyMonitoring.as_str()
+            }
+            PyDiscoveryResult::Hub { device_info, .. } => &device_info.nickname,
+            PyDiscoveryResult::CameraPtz { device_info, .. } => &device_info.nickname,
+            PyDiscoveryResult::Other { device_info, .. } => device_info
+                .nickname
+                .as_deref()
+                .unwrap_or(DeviceType::Other.as_str()),
+        }
+    }
 }
 
 #[pyclass(name = "MaybeDiscoveryResult")]
 pub struct PyMaybeDiscoveryResult {
     result: Option<PyDiscoveryResult>,
-    exception: Option<ErrorWrapper>,
+    exception: Option<DiscoveryError>,
 }
 
 #[pymethods]
@@ -80,7 +180,7 @@ impl PyMaybeDiscoveryResult {
 }
 
 pub fn convert_result_to_maybe_py(
-    result: Result<DiscoveryResult, Error>,
+    result: Result<DiscoveryResult, DiscoveryError>,
 ) -> PyResult<PyMaybeDiscoveryResult> {
     match result {
         Ok(result) => Ok(PyMaybeDiscoveryResult {
@@ -89,20 +189,13 @@ pub fn convert_result_to_maybe_py(
         }),
         Err(e) => Ok(PyMaybeDiscoveryResult {
             result: None,
-            exception: Some(ErrorWrapper::from(e)),
+            exception: Some(e),
         }),
     }
 }
 
 fn convert_result_to_py(result: DiscoveryResult) -> PyDiscoveryResult {
     match result {
-        DiscoveryResult::GenericDevice {
-            device_info,
-            handler,
-        } => PyDiscoveryResult::GenericDevice {
-            device_info: *device_info,
-            handler: PyGenericDeviceHandler::new(handler),
-        },
         DiscoveryResult::Light {
             device_info,
             handler,
@@ -165,6 +258,19 @@ fn convert_result_to_py(result: DiscoveryResult) -> PyDiscoveryResult {
         } => PyDiscoveryResult::Hub {
             device_info: *device_info,
             handler: PyHubHandler::new(handler),
+        },
+        DiscoveryResult::CameraPtz {
+            device_info,
+            handler,
+            ip,
+        } => PyDiscoveryResult::CameraPtz {
+            device_info: *device_info,
+            handler: PyCameraPtzHandler::new(handler),
+            ip,
+        },
+        DiscoveryResult::Other { device_info, ip } => PyDiscoveryResult::Other {
+            device_info: *device_info,
+            ip,
         },
     }
 }

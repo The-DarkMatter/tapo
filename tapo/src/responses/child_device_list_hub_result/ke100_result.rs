@@ -7,7 +7,10 @@ use crate::responses::{DecodableResultExt, Status, TapoResponseExt, decode_value
 /// Currently *Celsius* is the only unit supported by KE100.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all, eq, eq_int))]
+#[cfg_attr(
+    feature = "python",
+    pyo3::prelude::pyclass(from_py_object, get_all, eq, eq_int)
+)]
 #[allow(missing_docs)]
 pub enum TemperatureUnitKE100 {
     Celsius,
@@ -19,7 +22,7 @@ pub enum TemperatureUnitKE100 {
 /// `min_control_temperature`, `max_control_temperature`, `temperature_offset`,
 /// `child_protection_on`, `frost_protection_on`, `location`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct KE100Result {
     // Common properties to all Hub child devices.
@@ -34,6 +37,7 @@ pub struct KE100Result {
     pub jamming_rssi: i16,
     pub jamming_signal_level: u8,
     pub mac: String,
+    pub model: String,
     pub nickname: String,
     pub oem_id: String,
     pub parent_device_id: String,
@@ -63,16 +67,7 @@ pub struct KE100Result {
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl KE100Result {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(KE100Result);
 
 impl TapoResponseExt for KE100Result {}
 

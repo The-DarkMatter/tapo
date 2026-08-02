@@ -1,48 +1,40 @@
 /// Response Error from the Tapo API.
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
+#[allow(missing_docs)]
 pub enum TapoResponseError {
-    /// Unexpected empty result.
+    #[error("Device error {code}: {kind}")]
+    DeviceError { code: i64, kind: &'static str },
     #[error("Unexpected empty result")]
     EmptyResult,
-    /// Forbidden access.
-    #[error("Forbidden: code {code}, description {description}")]
-    Forbidden {
-        /// Error code.
-        code: String,
-        /// Error description.
+    #[error("HTTP error {status_code}: {description}")]
+    HttpError {
+        status_code: u16,
         description: String,
     },
-    /// Parameters were invalid.
-    #[error("Invalid parameters")]
-    InvalidParameters,
-    /// Invalid public key.
-    #[error("Invalid public key")]
-    InvalidPublicKey,
-    /// Invalid request.
-    #[error("Invalid request")]
-    InvalidRequest,
-    /// Invalid response.
-    #[error("Invalid response")]
-    InvalidResponse,
-    /// Malformed request.
-    #[error("Malformed request")]
-    MalformedRequest,
-    /// Session timeout.
-    #[error("Session timeout")]
-    SessionTimeout,
-    /// Unauthorized access.
-    #[error("Unauthorized: code {code}, description {description}")]
+    #[error("Response error: {description}")]
+    ResponseError { description: String },
+    #[error("Unauthorized: {kind}: {description}")]
     Unauthorized {
-        /// Error code.
-        code: String,
-        /// Error description.
+        kind: &'static str,
         description: String,
     },
-    /// Unknown Error. This is a catch-all for errors that don't fit into the other categories.
-    /// In time, some of these might be added as their own variants.
-    #[error("Unknown error: {0}")]
-    Unknown(i32),
+}
+
+impl TapoResponseError {
+    pub(crate) fn session_expired(kind: &'static str) -> Self {
+        Self::Unauthorized {
+            kind,
+            description: "Session has expired. Re-authentication is required.".to_string(),
+        }
+    }
+
+    pub(crate) fn hash_mismatch() -> Self {
+        Self::Unauthorized {
+            kind: "HASH_MISMATCH",
+            description: "The device response did not match the challenge issued by the library. Make sure that your email and password are correct -— both are case-sensitive. Before adding a new device, disconnect any existing TP-Link/Tapo devices on the network. The TP-Link Simple Setup (TSS) protocol, which shares credentials from previously configured devices, may interfere with authentication. If the problem continues, perform a factory reset on the new device and add it again with no other TP-Link devices active during setup.".to_string(),
+        }
+    }
 }
 
 /// Tapo API Client Error.
@@ -72,4 +64,28 @@ pub enum Error {
     /// Other Error. This is a catch-all for errors that don't fit into the other categories.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+#[cfg(feature = "python")]
+impl From<Error> for pyo3::PyErr {
+    fn from(err: Error) -> pyo3::PyErr {
+        pyo3::exceptions::PyException::new_err(format!("{:?}", err))
+    }
+}
+
+/// Discovery Error. Wraps an error that occurred while discovering a specific device.
+#[derive(thiserror::Error, Debug)]
+#[error("Failed to discover device at {ip}: {source}")]
+pub struct DiscoveryError {
+    /// The IP address of the device that failed to be discovered.
+    pub ip: String,
+    /// The underlying error.
+    pub source: Error,
+}
+
+#[cfg(feature = "python")]
+impl From<DiscoveryError> for pyo3::PyErr {
+    fn from(err: DiscoveryError) -> pyo3::PyErr {
+        pyo3::exceptions::PyException::new_err(format!("{:?}", err))
+    }
 }

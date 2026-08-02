@@ -1,5 +1,4 @@
 //! H100 Example
-use std::env;
 use std::time::Duration;
 
 use log::info;
@@ -13,9 +12,8 @@ mod common;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     common::setup_logger();
 
-    let tapo_username = env::var("TAPO_USERNAME")?;
-    let tapo_password = env::var("TAPO_PASSWORD")?;
-    let ip_address = env::var("IP_ADDRESS")?;
+    let [tapo_username, tapo_password, ip_address] =
+        common::require_env_vars(["TAPO_USERNAME", "TAPO_PASSWORD", "IP_ADDRESS"])?;
 
     let hub = ApiClient::new(tapo_username, tapo_password)
         .h100(ip_address)
@@ -40,15 +38,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     device.temperature_unit,
                 );
             }
-            ChildDeviceHubResult::S200B(device) => {
-                let s200b = hub
-                    .s200b(HubDevice::ByDeviceId(device.device_id.clone()))
+            ChildDeviceHubResult::S200(device) => {
+                let s200 = hub
+                    .s200(HubDevice::ByDeviceId(device.device_id.clone()))
                     .await?;
-                let trigger_logs = s200b.get_trigger_logs(5, 0).await?;
+                let trigger_logs = s200.get_trigger_logs(5, 0).await?;
 
                 info!(
-                    "Found S200B child device with nickname: {}, id: {}, last 5 trigger logs: {:?}.",
+                    "Found S200B/S200D child device with nickname: {}, id: {}, last 5 trigger logs: {:?}.",
                     device.nickname, device.device_id, trigger_logs
+                );
+            }
+            ChildDeviceHubResult::S210(device) => {
+                let s210 = hub
+                    .s210(HubDevice::ByDeviceId(device.device_id.clone()))
+                    .await?;
+                let device_usage = s210.get_device_usage().await?;
+
+                info!(
+                    "Found S210 child device with nickname: {}, id: {}, device_on: {}, device usage: {:?}.",
+                    device.nickname, device.device_id, device.device_on, device_usage
                 );
             }
             ChildDeviceHubResult::T100(device) => {
@@ -88,14 +97,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     trigger_logs
                 );
             }
-            ChildDeviceHubResult::T310(device) | ChildDeviceHubResult::T315(device) => {
+            ChildDeviceHubResult::T31X(device) => {
                 let t31x = hub
-                    .t315(HubDevice::ByDeviceId(device.device_id.clone()))
+                    .t31x(HubDevice::ByDeviceId(device.device_id.clone()))
                     .await?;
                 let temperature_humidity_records = t31x.get_temperature_humidity_records().await?;
 
                 info!(
-                    "Found T31X child device with nickname: {}, id: {}, temperature: {} {:?}, humidity: {}%, earliest temperature and humidity record available: {:?}.",
+                    "Found T310/T315 child device with nickname: {}, id: {}, temperature: {} {:?}, humidity: {}%, earliest temperature and humidity record available: {:?}.",
                     device.nickname,
                     device.device_id,
                     device.current_temperature,
@@ -104,8 +113,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     temperature_humidity_records.records.first()
                 );
             }
-            _ => {
-                info!("Found unsupported device.")
+            ChildDeviceHubResult::Other(device) => {
+                info!(
+                    "Found unsupported child device with nickname: {}, id: {}, model: {}.",
+                    device.nickname, device.device_id, device.model
+                );
             }
         }
     }

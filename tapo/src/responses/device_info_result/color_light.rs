@@ -3,40 +3,35 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 use crate::responses::{DecodableResultExt, DefaultStateType, TapoResponseExt, decode_value};
 
-/// Device info of Tapo L530, L535 and L630. Superset of [`crate::responses::DeviceInfoGenericResult`].
+/// Device info of Tapo L530, L535 and L630.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct DeviceInfoColorLightResult {
     //
-    // Inherited from DeviceInfoGenericResult
+    // Common properties
     //
+    pub avatar: String,
     pub device_id: String,
-    pub r#type: String,
-    pub model: String,
-    pub hw_id: String,
-    pub hw_ver: String,
     pub fw_id: String,
     pub fw_ver: String,
-    pub oem_id: String,
-    pub mac: String,
-    pub ip: String,
-    pub ssid: String,
-    pub signal_level: u8,
-    pub rssi: i16,
-    pub specs: String,
-    pub lang: String,
-    pub device_on: bool,
-    /// The time in seconds this device has been ON since the last state change (On/Off).
-    /// On v2 hardware this is always None.
-    pub on_time: Option<u64>,
-    pub nickname: String,
-    pub avatar: String,
     pub has_set_location_info: bool,
-    pub region: Option<String>,
+    pub hw_id: String,
+    pub hw_ver: String,
+    pub ip: String,
+    pub lang: String,
     pub latitude: Option<i64>,
     pub longitude: Option<i64>,
+    pub mac: String,
+    pub model: String,
+    pub oem_id: String,
+    pub region: Option<String>,
+    pub rssi: i16,
+    pub signal_level: u8,
+    pub specs: String,
+    pub ssid: String,
     pub time_diff: Option<i64>,
+    pub r#type: String,
     //
     // Unique to this device
     //
@@ -44,24 +39,20 @@ pub struct DeviceInfoColorLightResult {
     pub color_temp: u16,
     /// The default state of a device to be used when internet connectivity is lost after a power cut.
     pub default_states: DefaultColorLightState,
+    pub device_on: bool,
     pub dynamic_light_effect_enable: bool,
     pub dynamic_light_effect_id: Option<String>,
     pub hue: Option<u16>,
+    pub nickname: String,
+    /// The time in seconds this device has been ON since the last state change (On/Off).
+    /// On v2 hardware this is always None.
+    pub on_time: Option<u64>,
     pub overheated: bool,
     pub saturation: Option<u16>,
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl DeviceInfoColorLightResult {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(DeviceInfoColorLightResult);
 
 impl TapoResponseExt for DeviceInfoColorLightResult {}
 
@@ -76,16 +67,19 @@ impl DecodableResultExt for DeviceInfoColorLightResult {
 
 /// Color Light Default State.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct DefaultColorLightState {
     pub r#type: DefaultStateType,
     pub state: ColorLightState,
 }
 
+#[cfg(feature = "python")]
+crate::impl_to_dict!(DefaultColorLightState);
+
 /// Color Light State.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct ColorLightState {
     pub brightness: u8,
@@ -93,3 +87,6 @@ pub struct ColorLightState {
     pub saturation: Option<u16>,
     pub color_temp: u16,
 }
+
+#[cfg(feature = "python")]
+crate::impl_to_dict!(ColorLightState);

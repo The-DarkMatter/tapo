@@ -5,7 +5,8 @@ use serde::Serialize;
 use super::{
     ControlChildParams, DeviceRebootParams, GetChildDeviceListParams, GetEnergyDataParams,
     GetPowerDataParams, GetTriggerLogsParams, HandshakeParams, LightingEffect, LoginDeviceParams,
-    MultipleRequestParams, PlayAlarmParams, SecurePassthroughParams,
+    MultipleRequestParams, PlayAlarmParams, SecurePassthroughParams, SegmentEffect,
+    SmartCamDoParams, SmartCamGetParams,
 };
 
 #[derive(Debug, Serialize)]
@@ -20,6 +21,7 @@ pub(crate) enum TapoRequest {
     SecurePassthrough(TapoParams<SecurePassthroughParams>),
     SetDeviceInfo(Box<TapoParams<serde_json::Value>>),
     SetLightingEffect(Box<TapoParams<LightingEffect>>),
+    ApplySegmentEffectRule(Box<TapoParams<SegmentEffect>>),
     DeviceReset(TapoParams<EmptyParams>),
     DeviceReboot(TapoParams<DeviceRebootParams>),
     GetDeviceInfo(TapoParams<EmptyParams>),
@@ -29,6 +31,7 @@ pub(crate) enum TapoRequest {
     GetEnergyData(TapoParams<GetEnergyDataParams>),
     GetPowerData(TapoParams<GetPowerDataParams>),
     GetChildDeviceList(TapoParams<GetChildDeviceListParams>),
+    #[cfg(feature = "debug")]
     GetChildDeviceComponentList(TapoParams<EmptyParams>),
     ControlChild(Box<TapoParams<ControlChildParams>>),
     // Child requests
@@ -39,8 +42,14 @@ pub(crate) enum TapoRequest {
     GetTemperatureHumidityRecords(Box<TapoParams<EmptyParams>>),
     PlayAlarm(TapoParams<PlayAlarmParams>),
     StopAlarm(TapoParams<EmptyParams>),
+    #[cfg(feature = "debug")]
     #[serde(rename = "get_support_alarm_type_list")]
     GetSupportedAlarmTypeList(TapoParams<EmptyParams>),
+    // Smart Camera requests
+    #[serde(rename = "get")]
+    SmartCamGet(SmartCamGetParams),
+    #[serde(rename = "do")]
+    SmartCamDo(SmartCamDoParams),
 }
 
 #[derive(Debug, Serialize)]

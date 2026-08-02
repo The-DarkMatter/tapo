@@ -1,10 +1,20 @@
 from typing import Union
 
+from tapo.debug_ext import DebugExt
 from tapo.device_management_ext import DeviceManagementExt
-from tapo.requests import Color, ColorLightSetDeviceInfoParams, LightingEffect, LightingEffectPreset
-from tapo.responses import DeviceInfoRgbicLightStripResult, DeviceUsageResult
+from tapo.on_off_ext import OnOffExt
+from tapo.refresh_session_ext import RefreshSessionExt
+from tapo.requests import (
+    Color,
+    ColorLightSetDeviceInfoParams,
+    LightingEffect,
+    LightingEffectPreset,
+    SegmentEffect,
+    SegmentEffectPreset,
+)
+from tapo.responses import DeviceInfoRgbicLightStripResult, DeviceUsageEnergyMonitoringResult
 
-class RgbicLightStripHandler(DeviceManagementExt):
+class RgbicLightStripHandler(OnOffExt, DeviceManagementExt, RefreshSessionExt, DebugExt):
     """Handler for the [L920](https://www.tapo.com/en/search/?q=L920) and
     [L930](https://www.tapo.com/en/search/?q=L930) devices.
     """
@@ -14,15 +24,6 @@ class RgbicLightStripHandler(DeviceManagementExt):
         It should not be called from outside the tapo library.
         """
 
-    async def refresh_session(self) -> None:
-        """Refreshes the authentication session."""
-
-    async def on(self) -> None:
-        """Turns *on* the device."""
-
-    async def off(self) -> None:
-        """Turns *off* the device."""
-
     async def get_device_info(self) -> DeviceInfoRgbicLightStripResult:
         """Returns *device info* as `DeviceInfoRgbicLightStripResult`.
         It is not guaranteed to contain all the properties returned from the Tapo API.
@@ -31,22 +32,14 @@ class RgbicLightStripHandler(DeviceManagementExt):
 
         Returns:
             DeviceInfoRgbicLightStripResult: Device info of Tapo L920 and L930.
-            Superset of `GenericDeviceInfoResult`.
         """
 
-    async def get_device_info_json(self) -> dict:
-        """Returns *device info* as json.
-        It contains all the properties returned from the Tapo API.
+    async def get_device_usage(self) -> DeviceUsageEnergyMonitoringResult:
+        """Returns *device usage* as `DeviceUsageEnergyMonitoringResult`.
 
         Returns:
-            dict: Device info as a dictionary.
-        """
-
-    async def get_device_usage(self) -> DeviceUsageResult:
-        """Returns *device usage* as `DeviceUsageResult`.
-
-        Returns:
-            DeviceUsageResult: Contains the time usage.
+            DeviceUsageEnergyMonitoringResult:
+            Contains the time usage, the power consumption, and the energy savings of the device.
         """
 
     def set(self) -> ColorLightSetDeviceInfoParams:
@@ -95,4 +88,16 @@ class RgbicLightStripHandler(DeviceManagementExt):
 
         Args:
             lighting_effect (LightingEffect | LightingEffectPreset)
+        """
+
+    async def set_segment_effect(
+        self, segment_effect: Union[SegmentEffect, SegmentEffectPreset]
+    ) -> None:
+        """Sets a *segment effect* and turns *on* the device.
+
+        This is used for the newer app-defined RGBIC strip effects that cannot be set by
+        `LightingEffect` (for example, "circulating" or "breathe" segment effects).
+
+        Args:
+            segment_effect (SegmentEffect | SegmentEffectPreset)
         """

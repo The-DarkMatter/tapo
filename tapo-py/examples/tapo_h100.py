@@ -1,17 +1,27 @@
 """H100 Example"""
 
 import asyncio
-import os
 
 from tapo import ApiClient
 from tapo.requests import AlarmRingtone, AlarmVolume, AlarmDuration
-from tapo.responses import KE100Result, S200BResult, T100Result, T110Result, T300Result, T31XResult
+from tapo.responses import (
+    KE100Result,
+    OtherResult,
+    S200Result,
+    S210Result,
+    T100Result,
+    T110Result,
+    T300Result,
+    T31XResult,
+)
+
+from common import require_env_vars
 
 
 async def main():
-    tapo_username = os.getenv("TAPO_USERNAME")
-    tapo_password = os.getenv("TAPO_PASSWORD")
-    ip_address = os.getenv("IP_ADDRESS")
+    tapo_username, tapo_password, ip_address = require_env_vars(
+        "TAPO_USERNAME", "TAPO_PASSWORD", "IP_ADDRESS"
+    )
 
     client = ApiClient(tapo_username, tapo_password)
     hub = await client.h100(ip_address)
@@ -22,8 +32,12 @@ async def main():
     child_device_list = await hub.get_child_device_list()
 
     for child in child_device_list:
-        if child is None:
-            print("Found unsupported device.")
+        if isinstance(child, OtherResult):
+            print(
+                "Found unsupported child device with nickname: {}, id: {}, model: {}.".format(
+                    child.nickname, child.device_id, child.model
+                )
+            )
         elif isinstance(child, KE100Result):
             print(
                 "Found KE100 child device with nickname: {}, id: {}, current temperature: {:.2f} {} and target temperature: {:.2f} {}.".format(
@@ -35,15 +49,27 @@ async def main():
                     child.temperature_unit,
                 )
             )
-        elif isinstance(child, S200BResult):
-            s200b = await hub.s200b(device_id=child.device_id)
-            trigger_logs = await s200b.get_trigger_logs(5, 0)
+        elif isinstance(child, S200Result):
+            s200 = await hub.s200(device_id=child.device_id)
+            trigger_logs = await s200.get_trigger_logs(5, 0)
 
             print(
-                "Found S200B child device with nickname: {}, id: {}, last 5 trigger logs: {}.".format(
+                "Found S200B/S200D child device with nickname: {}, id: {}, last 5 trigger logs: {}.".format(
                     child.nickname,
                     child.device_id,
                     [log.to_dict() for log in trigger_logs.logs],
+                )
+            )
+        elif isinstance(child, S210Result):
+            s210 = await hub.s210(device_id=child.device_id)
+            device_usage = await s210.get_device_usage()
+
+            print(
+                "Found S210 child device with nickname: {}, id: {}, device_on: {}, device usage: {}.".format(
+                    child.nickname,
+                    child.device_id,
+                    child.device_on,
+                    device_usage.to_dict(),
                 )
             )
         elif isinstance(child, T100Result):
@@ -84,11 +110,11 @@ async def main():
                 )
             )
         elif isinstance(child, T31XResult):
-            t31x = await hub.t315(device_id=child.device_id)
+            t31x = await hub.t31x(device_id=child.device_id)
             temperature_humidity_records = await t31x.get_temperature_humidity_records()
 
             print(
-                "Found T31X child device with nickname: {}, id: {}, temperature: {:.2f} {}, humidity: {}%, earliest temperature and humidity record available: {}.".format(
+                "Found T310/T315 child device with nickname: {}, id: {}, temperature: {:.2f} {}, humidity: {}%, earliest temperature and humidity record available: {}.".format(
                     child.nickname,
                     child.device_id,
                     child.current_temperature,

@@ -1,7 +1,8 @@
+mod basic;
+mod camera;
 mod color_light;
 mod default_plug_state;
 mod default_state;
-mod generic;
 mod hub;
 mod light;
 mod plug;
@@ -11,10 +12,11 @@ mod power_strip;
 mod rgb_light_strip;
 mod rgbic_light_strip;
 
+pub use basic::*;
+pub use camera::*;
 pub use color_light::*;
 pub use default_plug_state::*;
 pub use default_state::*;
-pub use generic::*;
 pub use hub::*;
 pub use light::*;
 pub use plug::*;

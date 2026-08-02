@@ -8,7 +8,10 @@ use crate::responses::{DecodableResultExt, Status, TapoResponseExt, decode_value
 /// Temperature unit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all, eq, eq_int))]
+#[cfg_attr(
+    feature = "python",
+    pyo3::prelude::pyclass(from_py_object, get_all, eq, eq_int)
+)]
 #[allow(missing_docs)]
 pub enum TemperatureUnit {
     Celsius,
@@ -21,7 +24,7 @@ pub enum TemperatureUnit {
 /// `current_temperature_exception`, `current_humidity`, `current_humidity_exception`,
 /// `report_interval`, `last_onboarding_timestamp`, `status_follow_edge`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct T31XResult {
     // Common properties to all Hub child devices.
@@ -36,6 +39,7 @@ pub struct T31XResult {
     pub jamming_rssi: i16,
     pub jamming_signal_level: u8,
     pub mac: String,
+    pub model: String,
     pub nickname: String,
     pub oem_id: String,
     pub parent_device_id: String,
@@ -68,16 +72,7 @@ pub struct T31XResult {
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl T31XResult {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(T31XResult);
 
 impl TapoResponseExt for T31XResult {}
 
@@ -102,7 +97,7 @@ impl TapoResponseExt for TemperatureHumidityRecordsRaw {}
 
 /// Temperature and Humidity record as an average over a 15 minute interval.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct TemperatureHumidityRecord {
     /// Record's DateTime in UTC.
@@ -120,20 +115,11 @@ pub struct TemperatureHumidityRecord {
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl TemperatureHumidityRecord {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(TemperatureHumidityRecord);
 
 /// Temperature and Humidity records for the last 24 hours at 15 minute intervals.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct TemperatureHumidityRecords {
     /// The datetime in UTC of when this response was generated.
@@ -143,16 +129,7 @@ pub struct TemperatureHumidityRecords {
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl TemperatureHumidityRecords {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(TemperatureHumidityRecords);
 
 impl TryFrom<TemperatureHumidityRecordsRaw> for TemperatureHumidityRecords {
     type Error = anyhow::Error;
@@ -202,6 +179,7 @@ impl TryFrom<TemperatureHumidityRecordsRaw> for TemperatureHumidityRecords {
             }
 
             interval_time = interval_time
+                // safe: 15 minutes is always a valid Duration (only overflows for extremely large values)
                 .checked_sub_signed(Duration::try_minutes(15).unwrap())
                 .ok_or_else(|| anyhow::anyhow!("Failed to subtract from interval"))?;
         }

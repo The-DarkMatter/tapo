@@ -7,61 +7,52 @@ use super::{
     ChargingStatus, DefaultPlugState, OvercurrentStatus, OverheatStatus, PowerProtectionStatus,
 };
 
-/// Device info of Tapo P110, P110M and P115. Superset of [`crate::responses::DeviceInfoGenericResult`].
+/// Device info of Tapo P110, P110M and P115.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs, deprecated)]
 pub struct DeviceInfoPlugEnergyMonitoringResult {
     //
-    // Inherited from DeviceInfoGenericResult
+    // Common properties
     //
+    pub avatar: String,
     pub device_id: String,
-    pub r#type: String,
-    pub model: String,
-    pub hw_id: String,
-    pub hw_ver: String,
     pub fw_id: String,
     pub fw_ver: String,
-    pub oem_id: String,
-    pub mac: String,
-    pub ip: String,
-    pub ssid: String,
-    pub signal_level: u8,
-    pub rssi: i16,
-    pub specs: String,
-    pub lang: String,
-    pub device_on: bool,
-    /// The time in seconds this device has been ON since the last state change (On/Off).
-    pub on_time: u64,
-    pub nickname: String,
-    pub avatar: String,
     pub has_set_location_info: bool,
-    pub region: Option<String>,
+    pub hw_id: String,
+    pub hw_ver: String,
+    pub ip: String,
+    pub lang: String,
     pub latitude: Option<i64>,
     pub longitude: Option<i64>,
+    pub mac: String,
+    pub model: String,
+    pub oem_id: String,
+    pub region: Option<String>,
+    pub rssi: i16,
+    pub signal_level: u8,
+    pub specs: String,
+    pub ssid: String,
     pub time_diff: Option<i64>,
+    pub r#type: String,
     //
     // Unique to this device
     //
     pub charging_status: ChargingStatus,
     /// The default state of a device to be used when internet connectivity is lost after a power cut.
     pub default_states: DefaultPlugState,
+    pub device_on: bool,
+    pub nickname: String,
+    /// The time in seconds this device has been ON since the last state change (On/Off).
+    pub on_time: u64,
     pub overcurrent_status: OvercurrentStatus,
     pub overheat_status: Option<OverheatStatus>,
     pub power_protection_status: PowerProtectionStatus,
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl DeviceInfoPlugEnergyMonitoringResult {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(DeviceInfoPlugEnergyMonitoringResult);
 
 impl TapoResponseExt for DeviceInfoPlugEnergyMonitoringResult {}
 

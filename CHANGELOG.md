@@ -6,7 +6,266 @@ file. This change log follows the conventions of
 
 ## [Rust Unreleased][Unreleased]
 
+### Added
+
+- `ChildDeviceHubResult`: added `device_id()`, `nickname()`, and `model()` accessors so callers can read these common fields without matching on every variant.
+- `HubHandler`: added `ke100_unchecked`, `s200_unchecked`, `s210_unchecked`, `t100_unchecked`, `t110_unchecked`, `t300_unchecked`, and `t31x_unchecked` for constructing typed child handlers without the validation round-trip. Use when the caller already has a valid device id.
+- `PowerStripHandler` and `PowerStripEnergyMonitoringHandler`: added `plug_unchecked(device_id)` for constructing the typed plug handler without the validation round-trip.
+
+### Changed
+
+- `TriggerLogsResult`: now derives `Serialize` so the type can be re-serialized by downstream consumers.
+
+### Fixed
+
+- AES SSL protocol (cameras): an unexpected `handshake1` error code (e.g. `-40401` SESSION_EXPIRED) now surfaces as an `Unauthorized` error that reports the received code, instead of a confusing deserialization error about a missing `nonce` field.
+
 ## [Python Unreleased][Unreleased]
+
+### Added
+
+- `HubHandler`: added `ke100_unchecked`, `s200_unchecked`, `s210_unchecked`, `t100_unchecked`, `t110_unchecked`, `t300_unchecked`, and `t31x_unchecked` for constructing typed child handlers without the validation round-trip. Use when the caller already has a valid device id.
+- `PowerStripHandler` and `PowerStripEnergyMonitoringHandler`: added `plug_unchecked(device_id)` for constructing the typed plug handler without the validation round-trip.
+
+### Fixed
+
+- AES SSL protocol (cameras): an unexpected `handshake1` error code (e.g. `-40401` SESSION_EXPIRED) now surfaces as an authentication error that reports the received code, instead of a confusing deserialization error about a missing `nonce` field.
+
+## [MCP Unreleased][Unreleased]
+
+## [MCP v0.5.0][tapo-mcp-v0.5.0] - 2026-07-11
+
+### Added
+
+- `TAPO_MCP_ALLOWED_HOSTS`: comma-separated allowlist of `Host` header values accepted by the HTTP server, for LAN or remote deployments.
+
+### Changed
+
+- `Server`: now refuses to start when it binds to a non-loopback address (e.g. `0.0.0.0:3000`) without `TAPO_MCP_API_KEY` set, so the container image can no longer boot unauthenticated. Set an API key or bind to a loopback address.
+
+### Fixed
+
+- `Server`: restored the MCP Streamable HTTP DNS-rebinding protection that was disabled in v0.3.1. The `Host` header allowlist defaults to loopback-only again, so a malicious web page can no longer reach a locally running server via DNS rebinding. LAN and remote deployments opt in their hostnames via the new `TAPO_MCP_ALLOWED_HOSTS` variable.
+
+## [MCP v0.4.0][tapo-mcp-v0.4.0] - 2026-05-22
+
+### Added
+
+- `list_devices`, `check_device`, `get_device_state`: added support for the H100 hub. The hub is now listed as a supported device with each connected child sensor or switch surfaced under `children`.
+- `get_device_state`: hub children (KE100, S200B/D, S210, T100, T110, T300, T310/T315) advertise and serve `DeviceInfo`.
+- `get_device_state`: added `TriggerLogs` capability with `page_size` and `start_id` pagination (use `start_id = 0` to start from the most recent entry). Available on S200B/D, T100, T110, and T300 sensors.
+- `get_device_state`: added `TemperatureHumidityRecords` capability returning the last 24 hours at 15 minute intervals. Available on T310 and T315 sensors.
+
+### Changed
+
+- `control_device`, `get_device_state`: replaced the `UnsupportedCapability` error with `WrongDeviceType { id, capability, expected }`, where `expected` is a human-readable description of the device required for the capability (e.g. `"a light device"`, `"a trigger-based sensor (S200B/D, T100, T110, T300)"`). Clients matching on `UnsupportedCapability` will need to handle the new variant.
+
+## [MCP v0.3.1][tapo-mcp-v0.3.1] - 2026-04-25
+
+### Fixed
+
+- `Server`: corrected LAN reachability broken by rmcp's default Host-header allowlist (loopback-only). Bearer auth, when configured, remains the access control.
+
+## [MCP v0.3.0][tapo-mcp-v0.3.0] - 2026-04-25
+
+### Added
+
+- `list_devices`, `check_device`, `get_device_state`: added support for SmartCam devices (e.g. IP cameras) via the AES SSL protocol. PTZ cameras (C210, C220, C225, C325WB, C520WS, TC40, TC70) return `DeviceInfoCameraResult` with camera-specific fields; other SmartCam devices return `DeviceInfoBasicResult`.
+- `take_snapshot`: added tool that captures a still JPEG snapshot from a Tapo camera (approximately 640x360). Supported cameras now advertise a `Snapshot` capability in `list_devices`. Requires camera-account credentials configured via `TAPO_MCP_CAMERA_USERNAME` and `TAPO_MCP_CAMERA_PASSWORD` (Camera Settings > Advanced Settings > Camera Account in the Tapo app).
+
+## [Rust v0.9.0][v0.9.0] - 2026-04-25
+
+### Added
+
+- `ApiClient::discover_devices`: added support for SmartCam devices (e.g. IP cameras) via the AES SSL protocol. They are now discovered and listed as `DiscoveryResult::CameraPtz` (for PTZ models) or `DiscoveryResult::Other` instead of failing with an error.
+- `CameraPtzHandler`: added handler for Tapo PTZ cameras (C210, C220, C225, C325WB, C520WS, TC40, TC70) with `get_device_info`, `get_rtsp_stream_url`, `get_snapshot`, `pan_tilt`, `save_preset`, `goto_preset`, `delete_preset`, and `get_presets` methods. Use `c210`, `c220`, `c225`, `c325wb`, `c520ws`, `tc40`, or `tc70` on the `ApiClient` to create it.
+- `DiscoveryResult::CameraPtz`: added variant exposing `device_info`, `handler`, and `ip` when a supported PTZ camera is discovered.
+- `HubHandler`: added support for S210 light switches with `on`, `off`, and `get_device_usage`. Use `s210` on the hub to create the `S210Handler`.
+- `OtherResult`: added catch-all result type for unsupported hub child devices, containing `device_id`, `model`, and `nickname`.
+- `KE100Result`, `S200Result`, `T100Result`, `T110Result`, `T300Result`, `T31XResult`: added `model` field.
+- `json-schema` feature: added optional `schemars::JsonSchema` derive on `Color` for use with MCP or other JSON Schema tooling.
+- `ApiClient::discover_devices_raw`: added raw device discovery (behind `debug` feature) that returns the IP address of the devices found and their discovery JSON response.
+
+### Changed
+
+- `ChildDeviceHubResult::Other`: changed from a unit variant to `Other(Box<OtherResult>)`, exposing device info for unrecognized models.
+- `ApiClient::discover_devices`: sped up discovery by inferring the authentication protocol (KLAP or AES) from the discovery message instead of probing the device.
+- `DiscoveryResult::GenericDevice`: renamed to `DiscoveryResult::Other`. Removed `handler` field, added `ip` field.
+- `DeviceType::GenericDevice`: renamed to `DeviceType::Other`.
+- `DeviceInfoGenericResult`: renamed to `DeviceInfoBasicResult`.
+- `DeviceInfoPowerStripResult`: changed `time_diff` from `i64` to `Option<i64>` for consistency with other device info types.
+- `DeviceInfoBasicResult`: removed `device_on`, `on_time`, `ip`, `fw_id`, `hw_id`, `lang`, `rssi`, `signal_level`, `specs`, `ssid`, and `time_diff` fields. Changed `nickname` to `Option<String>`. Added serde aliases for SmartCam field name compatibility.
+
+### Fixed
+
+- `AesSslProtocol`, `KlapProtocol`: downgraded `error!` log calls to `debug!` on request, handshake, and authentication failures. The same information is already returned as an `Err` value, so the `error!` logs were duplicate reporting.
+
+### Removed
+
+- `GenericDeviceHandler`: removed. Use a specific handler type (e.g. `l530`, `p110`) instead.
+- `ApiClient::generic_device`: removed method for creating a `GenericDeviceHandler`.
+
+## [Python v0.9.0][v0.9.0] - 2026-04-25
+
+### Added
+
+- `ApiClient.discover_devices`: added support for SmartCam devices (e.g. IP cameras) via the AES SSL protocol. They are now discovered and listed as `DiscoveryResult.CameraPtz` (for PTZ models) or `DiscoveryResult.Other` instead of failing with an error.
+- `CameraPtzHandler`: added handler for Tapo PTZ cameras (C210, C220, C225, C325WB, C520WS, TC40, TC70) with `get_device_info`, `get_rtsp_stream_url`, `get_snapshot`, `pan_tilt`, `save_preset`, `goto_preset`, `delete_preset`, and `get_presets` methods. Use `c210`, `c220`, `c225`, `c325wb`, `c520ws`, `tc40`, or `tc70` on the `ApiClient` to create it.
+- `DiscoveryResult.CameraPtz`: added variant exposing `device_info`, `handler`, and `ip` when a supported PTZ camera is discovered.
+- `HubHandler`: added support for S210 light switches with `on`, `off`, and `get_device_usage`. Use `s210` on the hub to create the `S210Handler`.
+- `OtherResult`: added catch-all result type for unsupported hub child devices, containing `device_id`, `model`, and `nickname`.
+- `KE100Result`, `S200Result`, `T100Result`, `T110Result`, `T300Result`, `T31XResult`: added `model` field.
+- `ApiClient.discover_devices_raw`: added raw device discovery that returns the IP address of the devices found and their discovery JSON response.
+
+### Changed
+
+- `HubHandler`: changed `get_child_device_list()` to return `OtherResult` instead of `None` for unsupported devices.
+- `ApiClient.discover_devices`: sped up discovery by inferring the authentication protocol (KLAP or AES) from the discovery message instead of probing the device.
+- `DiscoveryResult.GenericDevice`: renamed to `DiscoveryResult.Other`. Removed `handler` field, added `ip` field.
+- `DeviceType.GenericDevice`: renamed to `DeviceType.Other`.
+- `DeviceInfoGenericResult`: renamed to `DeviceInfoBasicResult`.
+- `DeviceInfoBasicResult`: removed `device_on`, `on_time`, `ip`, `fw_id`, `hw_id`, `lang`, `rssi`, `signal_level`, `specs`, `ssid`, and `time_diff` fields. Changed `nickname` to `Optional[str]`. No longer inherits from `DeviceInfoSmartExt`; all fields are now declared directly.
+
+### Fixed
+
+- `DeviceInfoRgbLightStripResult`, `DeviceInfoRgbicLightStripResult`: removed incorrect `on_time` field from `.pyi` stubs (not present in Rust type).
+- `Logging`: stopped emitting `error`-level Rust logs on stderr for request failures, handshake errors, and session expiry. The same information is already raised as a Python exception; these messages are now emitted at `debug` level instead.
+
+### Removed
+
+- `GenericDeviceHandler`: removed. Use a specific handler type (e.g. `l530`, `p110`) instead.
+- `ApiClient.generic_device`: removed method for creating a `GenericDeviceHandler`.
+
+## [Rust v0.8.12][v0.8.12] - 2026-03-11
+
+### Added
+
+- `DeviceType`: added enum that categorizes Tapo devices by their handlers (e.g. `Light`, `Plug`, `Hub`), with a `from_model` constructor for mapping model strings.
+- `DiscoveryResult`: added accessor methods `device_type()`, `model()`, `ip()`, `device_id()`, and `nickname()` for convenient access to common properties without pattern matching.
+- All handlers: added `debug` feature flag that gates inspection methods `get_device_info_json()`, `get_child_device_list_json()`, `get_child_device_component_list()`, `get_supported_ringtone_list()`, and `get_component_list()`.
+- All handlers: added `get_component_list()` method (behind `debug` feature) for inspecting device capabilities.
+
+### Changed
+
+- `DeviceDiscovery`: changed the `discover` method stream to raise `tapo::TapoDiscoveryError` instead of `tapo::TapoError` for more specific error handling, such as including the IP of the device that caused the error.
+- `HubHandler`, `PowerStripHandler`, `PowerStripEnergyMonitoringHandler`: replaced `get_child_device_component_list_json()` with `get_child_device_component_list()` (behind `debug` feature) returning `Vec<ChildDeviceComponentList>` instead of raw JSON.
+
+## [Python v0.8.12][v0.8.12] - 2026-03-11
+
+### Added
+
+- `DeviceType`: added enum that categorizes Tapo devices by their handlers (e.g. `Light`, `Plug`, `Hub`).
+- `DiscoveryResult`: added accessor properties `device_type`, `model`, `ip`, `device_id`, and `nickname` for convenient access to common properties without pattern matching.
+- `Component`: added class (behind `debug` feature) for inspecting device capabilities returned by `get_component_list()`.
+- All handlers: added `get_component_list()` method (behind `debug` feature) for inspecting device capabilities.
+- All response and request classes: added `to_dict()` method for converting to a Python dictionary.
+
+### Changed
+
+- `DeviceDiscovery`: changed the `discover` method stream to raise `tapo.TapoDiscoveryError` instead of `tapo.TapoError` for more specific error handling, such as including the IP of the device that caused the error.
+- `HubHandler`, `PowerStripHandler`, `PowerStripEnergyMonitoringHandler`: replaced `get_child_device_component_list_json()` with `get_child_device_component_list()` returning `list[ChildDeviceComponentList]` instead of raw JSON.
+- `ApiClient`: changed the `discover_devices` method's `timeout_s` parameter to default to `10` seconds, making it optional.
+
+### Fixed
+
+- `ApiClient`: corrected the `timeout_s` parameter type to `Optional[int]`.
+- `ApiClient`: corrected `p316()` return type from `PowerStripHandler` to `PowerStripEnergyMonitoringHandler`.
+- `HubHandler`: corrected missing `self` parameter on `get_supported_ringtone_list()`.
+- `S200Handler`: added missing module registration that prevented `from tapo import S200Handler` from working.
+- `ColorLightSetDeviceInfoParams`: added `RgbicLightStripHandler` to the `send()` method's accepted handler types.
+- `PlugEnergyMonitoringHandler`, `PowerStripPlugEnergyMonitoringHandler`: corrected `start_date` and `end_date` parameter types in `get_energy_data()` from `datetime` to `date`.
+- `LightHandler`, `ColorLightHandler`, `RgbLightStripHandler`, `RgbicLightStripHandler`: corrected `get_device_usage()` return type from `DeviceUsageResult` to `DeviceUsageEnergyMonitoringResult`.
+
+## [MCP v0.2.1][tapo-mcp-v0.2.1] - 2026-03-18
+
+### Added
+
+- `CI`: added automated publishing to the Official MCP Registry on tagged releases.
+
+## [MCP v0.2.0][tapo-mcp-v0.2.0] - 2026-03-14
+
+### Added
+
+- `get_device_state`: added tool for reading a device's current state (e.g. on/off, brightness, color). Supports a `GetCapabilityRequest` selector, starting with `DeviceInfo`.
+- `Brightness`: added set capability for controlling device brightness (1-100). Available on Light, ColorLight, RgbLightStrip, and RgbicLightStrip devices.
+- `Color`: added set capability for setting device color using preset names. Available on ColorLight, RgbLightStrip, and RgbicLightStrip devices.
+
+### Changed
+
+- `set_device_state`: renamed to `control_device`.
+- `Device`, `ChildDevice`: replaced `capabilities` field with separate `set_capabilities` and `get_capabilities` fields.
+- `SetCapabilityRequest`: changed from externally tagged (e.g. `{"OnOff": true}`) to internally tagged with explicit fields (e.g. `{"type": "OnOff", "value": true}`).
+- `ControlDeviceParams`: changed `capability` field to `capabilities` (array), allowing multiple capabilities in a single call.
+
+## [MCP v0.1.0][tapo-mcp-v0.1.0] - 2026-03-09
+
+### Added
+
+- Initial release of `tapo-mcp`, an MCP server exposing Tapo devices as AI-callable tools and resources via the Model Context Protocol.
+- Tools: `list_devices`, `check_device`, `set_device_state`.
+- Resources: `tapo://devices` (JSON list of discovered devices).
+- Configuration via `TAPO_MCP_` environment variables.
+- OpenTelemetry tracing support (optional).
+
+## [Rust v0.8.11][v0.8.11] - 2026-02-27
+
+### Changed
+    
+- `HubHandler`: `s200b` and `s200d` handler builders have been consolidated into a single `s200` method. (thanks to @mibofra)
+- `HubHandler`: `t310` and `t315` handler builders have been consolidated into a single `t31x` method. (thanks to @mibofra)
+- `ChildDeviceHubResult`: `S200B` and `S200D` variants have been consolidated into a single `S200` variant.
+- `ChildDeviceHubResult`: `T310` and `T315` variants have been consolidated into a single `T31X` variant.
+
+## [Python v0.8.11][v0.8.11] - 2026-02-27
+
+### Changed
+
+- `HubHandler`: `s200b` and `s200d` handler builders have been consolidated into a single `s200` method. (thanks to @mibofra)
+- `HubHandler`: `t310` and `t315` handler builders have been consolidated into a single `t31x` method. (thanks to @mibofra)
+
+## [Rust v0.8.10][v0.8.10] - 2026-02-22
+
+### Fixed
+
+- `HubHandler::s200d`: fixed an issue where the method was incorrectly filtering for `S200B` devices instead of `S200D` devices.
+
+## [Python v0.8.10][v0.8.10] - 2026-02-22
+
+### Fixed
+
+- `HubHandler.s200d`: fixed an issue where the method was incorrectly filtering for `S200B` devices instead of `S200D` devices.
+
+## [Rust v0.8.9][v0.8.9] - 2026-02-21
+
+### Added
+
+- `RgbicLightStripHandler`: added `set_segment_effect` method to apply lighting effects to individual segments of RGBIC light strips, enabling the newer effects available in the Tapo app that cannot be achieved through the `set_lighting_effect` method. (thanks to @Oliyy)
+- `HubHandler`: added `s200d` method to create handlers for the S200D smart dimmer devices. (thanks to @mibofra)
+- `EnergyUsageResult`: re-added the `current_power` property. It was removed in v0.8.6 because some energy-monitoring plugs omit it, but it is back as optional since it provides higher precision than `get_current_power`. (thanks to @nazamhussain)
+- `EnergyUsageResult`: added the `electricity_charge` property to represent electricity charge/cost data reported by the device using the tariff configured in the Tapo app. (thanks to @nazamhussain)
+
+### Changed
+
+- `S200BHandler`: has been renamed to `S200Handler` to better reflect its purpose when used for both S200B and S200D devices.
+- `S200BResult`: has been renamed to `S200Result` to better reflect its purpose when used for both S200B and S200D devices.
+- `S200BRotationParams`: has been renamed to `S200RotationParams` to better reflect its purpose when used for both S200B and S200D devices.
+- `S200BLog`: has been renamed to `S200Log` to better reflect its purpose when used for both S200B and S200D devices.
+
+## [Python v0.8.9][v0.8.9] - 2026-02-21
+
+### Added
+
+- `RgbicLightStripHandler`: added `set_segment_effect` method to apply lighting effects to individual segments of RGBIC light strips, enabling the newer effects available in the Tapo app that cannot be achieved through the `set_lighting_effect` method. (thanks to @Oliyy)
+- `HubHandler`: added `s200d` method to create handlers for the S200D smart dimmer devices. (thanks to @mibofra)
+- `EnergyUsageResult`: re-added the `current_power` property. It was removed in v0.8.6 because some energy-monitoring plugs omit it, but it is back as optional since it provides higher precision than `get_current_power`. (thanks to @nazamhussain)
+- `EnergyUsageResult`: added the `electricity_charge` property to represent electricity charge/cost data reported by the device using the tariff configured in the Tapo app. (thanks to @nazamhussain)
+
+### Changed
+
+- `S200BHandler`: has been renamed to `S200Handler` to better reflect its purpose when used for both S200B and S200D devices.
+- `S200BResult`: has been renamed to `S200Result` to better reflect its purpose when used for both S200B and S200D devices.
+- `S200BRotationParams`: has been renamed to `S200RotationParams` to better reflect its purpose when used for both S200B and S200D devices.
+- `S200BLog`: has been renamed to `S200Log` to better reflect its purpose when used for both S200B and S200D devices.
 
 ## [Rust v0.8.8][v0.8.8] - 2025-11-23
 
@@ -752,6 +1011,19 @@ let device = ApiClient::new(ip_address, tapo_username, tapo_password)?
 ### Initial Release of Tapo
 
 [Unreleased]: https://github.com/mihai-dinculescu/tapo
+[tapo-mcp-v0.5.0]: https://github.com/mihai-dinculescu/tapo/tree/tapo-mcp-v0.5.0
+[tapo-mcp-v0.4.0]: https://github.com/mihai-dinculescu/tapo/tree/tapo-mcp-v0.4.0
+[tapo-mcp-v0.3.1]: https://github.com/mihai-dinculescu/tapo/tree/tapo-mcp-v0.3.1
+[tapo-mcp-v0.3.0]: https://github.com/mihai-dinculescu/tapo/tree/tapo-mcp-v0.3.0
+[v0.9.0]: https://github.com/mihai-dinculescu/tapo/tree/v0.9.0
+[tapo-mcp-v0.2.1]: https://github.com/mihai-dinculescu/tapo/tree/tapo-mcp-v0.2.1
+[tapo-mcp-v0.2.0]: https://github.com/mihai-dinculescu/tapo/tree/tapo-mcp-v0.2.0
+[v0.8.12]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.12
+[tapo-mcp-v0.1.0]: https://github.com/mihai-dinculescu/tapo/tree/tapo-mcp-v0.1.0
+[v0.8.11]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.11
+[v0.8.10]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.10
+[v0.8.9]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.9
+[v0.8.8]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.8
 [v0.8.7]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.7
 [v0.8.6]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.6
 [v0.8.5]: https://github.com/mihai-dinculescu/tapo/tree/v0.8.5

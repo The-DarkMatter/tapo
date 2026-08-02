@@ -1,28 +1,38 @@
 from typing import List, Optional, Union
 
-from tapo import KE100Handler, S200BHandler, T100Handler, T110Handler, T300Handler, T31XHandler
+from tapo import (
+    KE100Handler,
+    S200Handler,
+    S210Handler,
+    T100Handler,
+    T110Handler,
+    T300Handler,
+    T31XHandler,
+)
+from tapo.debug_ext import DebugExt
 from tapo.device_management_ext import DeviceManagementExt
+from tapo.refresh_session_ext import RefreshSessionExt
 from tapo.requests import AlarmDuration, AlarmRingtone, AlarmVolume
 from tapo.responses import (
+    ChildDeviceComponentList,
     DeviceInfoHubResult,
     KE100Result,
-    S200BResult,
+    OtherResult,
+    S200Result,
+    S210Result,
     T100Result,
     T110Result,
     T300Result,
     T31XResult,
 )
 
-class HubHandler(DeviceManagementExt):
+class HubHandler(DeviceManagementExt, RefreshSessionExt, DebugExt):
     """Handler for the [H100](https://www.tapo.com/en/search/?q=H100) devices."""
 
     def __init__(self, handler: object):
         """Private constructor.
         It should not be called from outside the tapo library.
         """
-
-    async def refresh_session(self) -> None:
-        """Refreshes the authentication session."""
 
     async def get_device_info(self) -> DeviceInfoHubResult:
         """Returns *device info* as `DeviceInfoHubResult`.
@@ -32,23 +42,23 @@ class HubHandler(DeviceManagementExt):
 
         Returns:
             DeviceInfoHubResult: Device info of Tapo H100.
-            Superset of `GenericDeviceInfoResult`.
-        """
-
-    async def get_device_info_json(self) -> dict:
-        """Returns *device info* as json.
-        It contains all the properties returned from the Tapo API.
-
-        Returns:
-            dict: Device info as a dictionary.
         """
 
     async def get_child_device_list(
         self,
     ) -> List[
-        Union[KE100Result, S200BResult, T100Result, T110Result, T300Result, T31XResult, None]
+        Union[
+            KE100Result,
+            S200Result,
+            S210Result,
+            T100Result,
+            T110Result,
+            T300Result,
+            T31XResult,
+            OtherResult,
+        ]
     ]:
-        """Returns *child device list* as `List[KE100Result | S200BResult | T100Result | T110Result | T300Result | T31XResult | None]`.
+        """Returns *child device list* as `List[KE100Result | S200Result | S210Result | T100Result | T110Result | T300Result | T31XResult | OtherResult]`.
         It is not guaranteed to contain all the properties returned from the Tapo API
         or to support all the possible devices connected to the hub.
         If the deserialization fails, or if a property that you care about it's not present,
@@ -70,15 +80,15 @@ class HubHandler(DeviceManagementExt):
             dict: Device info as a dictionary.
         """
 
-    async def get_child_device_component_list_json(self) -> dict:
-        """Returns *child device component list* as json.
-        It contains all the properties returned from the Tapo API.
+    async def get_child_device_component_list(self) -> List[ChildDeviceComponentList]:
+        """Returns *child device component list* as a list of `ChildDeviceComponentList`.
+        This information is useful in debugging or when investigating new functionality to add.
 
         Returns:
-            dict: Device info as a dictionary.
+            List[ChildDeviceComponentList]: The component list for each child device.
         """
 
-    async def get_supported_ringtone_list() -> List[str]:
+    async def get_supported_ringtone_list(self) -> List[str]:
         """Returns a list of ringtones (alarm types) supported by the hub.
         Used for debugging only.
 
@@ -132,17 +142,18 @@ class HubHandler(DeviceManagementExt):
             ```
         """
 
-    async def s200b(
+    async def s200(
         self, device_id: Optional[str] = None, nickname: Optional[str] = None
-    ) -> S200BHandler:
-        """Returns a `S200BHandler` for the device matching the provided `device_id` or `nickname`.
+    ) -> S200Handler:
+        """Returns a `S200Handler` for the device matching the provided `device_id` or `nickname`.
 
         Args:
             device_id (Optional[str]): The Device ID of the device
             nickname (Optional[str]): The Nickname of the device
 
         Returns:
-            S200BHandler: Handler for the [S200B](https://www.tapo.com/en/search/?q=S200B) devices.
+            S200Handler: Handler for the [S200B](https://www.tapo.com/en/search/?q=S200B) and
+            [S200D](https://www.tapo.com/en/search/?q=S200D) devices.
 
         Example:
             ```python
@@ -151,7 +162,34 @@ class HubHandler(DeviceManagementExt):
             hub = await client.h100("192.168.1.100")
 
             # Get a handler for the child device
-            device = await hub.s200b(device_id="0000000000000000000000000000000000000000")
+            device = await hub.s200(device_id="0000000000000000000000000000000000000000")
+
+            # Get the device info of the child device
+            device_info = await device.get_device_info()
+            print(f"Device info: {device_info.to_dict()}")
+            ```
+        """
+
+    async def s210(
+        self, device_id: Optional[str] = None, nickname: Optional[str] = None
+    ) -> S210Handler:
+        """Returns a `S210Handler` for the device matching the provided `device_id` or `nickname`.
+
+        Args:
+            device_id (Optional[str]): The Device ID of the device
+            nickname (Optional[str]): The Nickname of the device
+
+        Returns:
+            S210Handler: Handler for the [S210](https://www.tapo.com/en/search/?q=S210) devices.
+
+        Example:
+            ```python
+            # Connect to the hub
+            client = ApiClient("tapo-username@example.com", "tapo-password")
+            hub = await client.h100("192.168.1.100")
+
+            # Get a handler for the child device
+            device = await hub.s210(device_id="0000000000000000000000000000000000000000")
 
             # Get the device info of the child device
             device_info = await device.get_device_info()
@@ -240,7 +278,7 @@ class HubHandler(DeviceManagementExt):
             ```
         """
 
-    async def t310(
+    async def t31x(
         self, device_id: Optional[str] = None, nickname: Optional[str] = None
     ) -> T31XHandler:
         """Returns a `T31XHandler` for the device matching the provided `device_id` or `nickname`.
@@ -267,29 +305,65 @@ class HubHandler(DeviceManagementExt):
             ```
         """
 
-    async def t315(
-        self, device_id: Optional[str] = None, nickname: Optional[str] = None
-    ) -> T31XHandler:
-        """Returns a `T31XHandler` for the device matching the provided `device_id` or `nickname`.
-        Args:
-            device_id (Optional[str]): The Device ID of the device
-            nickname (Optional[str]): The Nickname of the device
+    async def ke100_unchecked(self, device_id: str) -> KE100Handler:
+        """Returns a `KE100Handler` for the given `device_id` without first listing the hub's
+        children to verify the device exists or matches the requested model. The device id
+        is trusted; if it is wrong or refers to a different model, subsequent operations on
+        the returned handler will fail at request time. Use this when you already have a
+        valid device id (e.g. from a prior `HubHandler.get_child_device_list` call) to avoid
+        the extra validation round-trip performed by `HubHandler.ke100`.
+        """
 
-        Returns:
-            T31XHandler: Handler for the [T310](https://www.tapo.com/en/search/?q=T310)
-            and [T315](https://www.tapo.com/en/search/?q=T315) devices.
+    async def s200_unchecked(self, device_id: str) -> S200Handler:
+        """Returns a `S200Handler` for the given `device_id` without first listing the hub's
+        children to verify the device exists or matches the requested model. The device id
+        is trusted; if it is wrong or refers to a different model, subsequent operations on
+        the returned handler will fail at request time. Use this when you already have a
+        valid device id (e.g. from a prior `HubHandler.get_child_device_list` call) to avoid
+        the extra validation round-trip performed by `HubHandler.s200`.
+        """
 
-        Example:
-            ```python
-            # Connect to the hub
-            client = ApiClient("tapo-username@example.com", "tapo-password")
-            hub = await client.h100("192.168.1.100")
+    async def s210_unchecked(self, device_id: str) -> S210Handler:
+        """Returns a `S210Handler` for the given `device_id` without first listing the hub's
+        children to verify the device exists or matches the requested model. The device id
+        is trusted; if it is wrong or refers to a different model, subsequent operations on
+        the returned handler will fail at request time. Use this when you already have a
+        valid device id (e.g. from a prior `HubHandler.get_child_device_list` call) to avoid
+        the extra validation round-trip performed by `HubHandler.s210`.
+        """
 
-            # Get a handler for the child device
-            device = await hub.t315(device_id="0000000000000000000000000000000000000000")
+    async def t100_unchecked(self, device_id: str) -> T100Handler:
+        """Returns a `T100Handler` for the given `device_id` without first listing the hub's
+        children to verify the device exists or matches the requested model. The device id
+        is trusted; if it is wrong or refers to a different model, subsequent operations on
+        the returned handler will fail at request time. Use this when you already have a
+        valid device id (e.g. from a prior `HubHandler.get_child_device_list` call) to avoid
+        the extra validation round-trip performed by `HubHandler.t100`.
+        """
 
-            # Get the device info of the child device
-            device_info = await device.get_device_info()
-            print(f"Device info: {device_info.to_dict()}")
-            ```
+    async def t110_unchecked(self, device_id: str) -> T110Handler:
+        """Returns a `T110Handler` for the given `device_id` without first listing the hub's
+        children to verify the device exists or matches the requested model. The device id
+        is trusted; if it is wrong or refers to a different model, subsequent operations on
+        the returned handler will fail at request time. Use this when you already have a
+        valid device id (e.g. from a prior `HubHandler.get_child_device_list` call) to avoid
+        the extra validation round-trip performed by `HubHandler.t110`.
+        """
+
+    async def t300_unchecked(self, device_id: str) -> T300Handler:
+        """Returns a `T300Handler` for the given `device_id` without first listing the hub's
+        children to verify the device exists or matches the requested model. The device id
+        is trusted; if it is wrong or refers to a different model, subsequent operations on
+        the returned handler will fail at request time. Use this when you already have a
+        valid device id (e.g. from a prior `HubHandler.get_child_device_list` call) to avoid
+        the extra validation round-trip performed by `HubHandler.t300`.
+        """
+
+    async def t31x_unchecked(self, device_id: str) -> T31XHandler:
+        """Returns a `T31XHandler` for the given `device_id` without first listing the hub's
+        children to verify the device exists or matches the requested model. The device id
+        is trusted; if it is wrong or refers to a different model, subsequent operations on
+        the returned handler will fail at request time. Use this when you already have a
+        valid device id (e.g. from a prior `HubHandler.get_child_device_list` call) to avoid
+        the extra validation round-trip performed by `HubHandler.t31x`.
         """

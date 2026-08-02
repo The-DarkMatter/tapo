@@ -8,7 +8,7 @@ use crate::responses::{DecodableResultExt, Status, TapoResponseExt, decode_value
 /// Specific properties: `detected`, `report_interval`,
 /// `last_onboarding_timestamp`, `status_follow_edge`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct T100Result {
     // Common properties to all Hub child devices.
@@ -23,6 +23,7 @@ pub struct T100Result {
     pub jamming_rssi: i16,
     pub jamming_signal_level: u8,
     pub mac: String,
+    pub model: String,
     pub nickname: String,
     pub oem_id: String,
     pub parent_device_id: String,
@@ -42,16 +43,7 @@ pub struct T100Result {
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl T100Result {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(T100Result);
 
 impl TapoResponseExt for T100Result {}
 
@@ -65,20 +57,11 @@ impl DecodableResultExt for T100Result {
 /// T100 Log.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "event")]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub enum T100Log {
     Motion { id: u64, timestamp: u64 },
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl T100Log {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(T100Log);

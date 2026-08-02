@@ -1,6 +1,7 @@
 from tapo.responses.child_device_list_hub_result.status import Status
+from tapo.to_dict_ext import ToDictExt
 
-class HubResult:
+class HubResultBase(ToDictExt):
     """Hub result. This is an abstract base class for all hub results."""
 
     at_low_battery: bool
@@ -14,6 +15,7 @@ class HubResult:
     jamming_rssi: int
     jamming_signal_level: int
     mac: str
+    model: str
     nickname: str
     oem_id: str
     parent_device_id: str
@@ -23,10 +25,3 @@ class HubResult:
     specs: str
     status: Status
     type: str
-
-    def to_dict(self) -> dict:
-        """Gets all the properties of this result as a dictionary.
-
-        Returns:
-            dict: The result as a dictionary.
-        """

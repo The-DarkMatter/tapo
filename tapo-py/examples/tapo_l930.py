@@ -1,16 +1,25 @@
 """L920 and L930 Example"""
 
 import asyncio
-import os
 
 from tapo import ApiClient
-from tapo.requests import Color, LightingEffect, LightingEffectPreset, LightingEffectType
+from tapo.requests import (
+    Color,
+    LightingEffect,
+    LightingEffectPreset,
+    LightingEffectType,
+    SegmentEffect,
+    SegmentEffectPreset,
+    SegmentEffectType,
+)
+
+from common import require_env_vars
 
 
 async def main():
-    tapo_username = os.getenv("TAPO_USERNAME")
-    tapo_password = os.getenv("TAPO_PASSWORD")
-    ip_address = os.getenv("IP_ADDRESS")
+    tapo_username, tapo_password, ip_address = require_env_vars(
+        "TAPO_USERNAME", "TAPO_PASSWORD", "IP_ADDRESS"
+    )
 
     client = ApiClient(tapo_username, tapo_password)
     device = await client.l930(ip_address)
@@ -85,6 +94,30 @@ async def main():
         .with_duration(50)
     )
     await device.set_lighting_effect(custom_effect)
+
+    print("Waiting 10 seconds...")
+    await asyncio.sleep(10)
+
+    print("Setting a preset Segment effect...")
+    await device.set_segment_effect(SegmentEffectPreset.Birthday)
+
+    print("Waiting 10 seconds...")
+    await asyncio.sleep(10)
+
+    print("Setting a custom Segment effect...")
+    custom_effect = (
+        SegmentEffect(
+            "My Custom Segment Effect",
+            SegmentEffectType.Circulating,
+            True,
+            True,
+            100,
+            [(267, 56, 100, 0)],
+        )
+        .with_segments([49])
+        .with_states([(267, 56, 100, 0)])
+    )
+    await device.set_segment_effect(custom_effect)
 
     print("Waiting 10 seconds...")
     await asyncio.sleep(10)

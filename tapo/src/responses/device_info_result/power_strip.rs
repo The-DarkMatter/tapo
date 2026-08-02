@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 use crate::responses::{DecodableResultExt, TapoResponseExt, decode_value};
 
-/// Device info of Tapo P300, P304M, P306 and P316M. Superset of [`crate::responses::DeviceInfoGenericResult`].
+/// Device info of Tapo P300, P304M, P306 and P316M.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct DeviceInfoPowerStripResult {
     //
-    // Inherited from DeviceInfoGenericResult
+    // Common properties
     //
     pub avatar: String,
     pub device_id: String,
@@ -30,21 +30,12 @@ pub struct DeviceInfoPowerStripResult {
     pub signal_level: u8,
     pub specs: String,
     pub ssid: String,
-    pub time_diff: i64,
+    pub time_diff: Option<i64>,
     pub r#type: String,
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl DeviceInfoPowerStripResult {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(DeviceInfoPowerStripResult);
 
 impl TapoResponseExt for DeviceInfoPowerStripResult {}
 

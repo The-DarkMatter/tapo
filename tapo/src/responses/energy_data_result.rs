@@ -6,8 +6,8 @@ use crate::responses::TapoResponseExt;
 use crate::utils::der_tapo_datetime_format;
 
 /// Energy data result for the requested [`crate::requests::PowerDataInterval`].
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 pub struct EnergyDataResult {
     /// Local time of the device.
     pub local_time: NaiveDateTime,
@@ -24,20 +24,11 @@ pub struct EnergyDataResult {
 impl TapoResponseExt for EnergyDataResult {}
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl EnergyDataResult {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(EnergyDataResult);
 
 /// Energy data result for a specific interval.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 pub struct EnergyDataIntervalResult {
     /// Start date and time of this interval in UTC.
     pub start_date_time: DateTime<Utc>,
@@ -46,16 +37,7 @@ pub struct EnergyDataIntervalResult {
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl EnergyDataIntervalResult {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(EnergyDataIntervalResult);
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct EnergyDataResultRaw {

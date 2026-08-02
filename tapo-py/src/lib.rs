@@ -1,5 +1,4 @@
 mod api;
-mod errors;
 mod requests;
 mod responses;
 mod runtime;
@@ -8,38 +7,43 @@ use log::LevelFilter;
 use pyo3::prelude::*;
 use pyo3_log::{Caching, Logger};
 
-use tapo::requests::{AlarmRingtone, AlarmVolume, Color, LightingEffectPreset, LightingEffectType};
+use tapo::requests::{
+    AlarmRingtone, AlarmVolume, Color, LightingEffectPreset, LightingEffectType,
+    SegmentEffectPreset, SegmentEffectType,
+};
 use tapo::responses::{
-    AutoOffStatus, ColorLightState, CurrentPowerResult, DefaultBrightnessState,
+    AutoOffStatus, ColorLightState, Component, CurrentPowerResult, DefaultBrightnessState,
     DefaultColorLightState, DefaultLightState, DefaultPlugState, DefaultPowerType,
     DefaultRgbLightStripState, DefaultRgbicLightStripState, DefaultStateType,
-    DeviceInfoColorLightResult, DeviceInfoGenericResult, DeviceInfoHubResult,
+    DeviceInfoBasicResult, DeviceInfoCameraResult, DeviceInfoColorLightResult, DeviceInfoHubResult,
     DeviceInfoLightResult, DeviceInfoPlugEnergyMonitoringResult, DeviceInfoPlugResult,
     DeviceInfoPowerStripResult, DeviceInfoRgbLightStripResult, DeviceInfoRgbicLightStripResult,
     DeviceUsageEnergyMonitoringResult, DeviceUsageResult, EnergyDataIntervalResult,
-    EnergyDataResult, EnergyUsageResult, KE100Result, OvercurrentStatus, OverheatStatus, PlugState,
-    PowerDataIntervalResult, PowerDataResult, PowerProtectionStatus,
-    PowerStripPlugEnergyMonitoringResult, PowerStripPlugResult, RgbLightStripState,
-    RgbicLightStripState, S200BLog, S200BResult, S200BRotationParams, Status, T31XResult, T100Log,
-    T100Result, T110Log, T110Result, T300Log, T300Result, TemperatureHumidityRecord,
-    TemperatureHumidityRecords, TemperatureUnit, TemperatureUnitKE100, UsageByPeriodResult,
-    WaterLeakStatus,
+    EnergyDataResult, EnergyUsageResult, KE100Result, OtherResult, OvercurrentStatus,
+    OverheatStatus, PlugState, PowerDataIntervalResult, PowerDataResult, PowerProtectionStatus,
+    PowerStripPlugEnergyMonitoringResult, PowerStripPlugResult, Preset, RgbLightStripState,
+    RgbicLightStripState, RtspStreamUrl, S200Log, S200Result, S200RotationParams, S210Result,
+    Snapshot, Status, T31XResult, T100Log, T100Result, T110Log, T110Result, T300Log, T300Result,
+    TemperatureHumidityRecord, TemperatureHumidityRecords, TemperatureUnit, TemperatureUnitKE100,
+    UsageByPeriodResult, WaterLeakStatus,
 };
+use tapo::{DeviceType, DiscoveryRawResult};
 
 use api::{
-    PyApiClient, PyColorLightHandler, PyDeviceDiscovery, PyDeviceDiscoveryIter, PyDiscoveryResult,
-    PyGenericDeviceHandler, PyHubHandler, PyKE100Handler, PyLightHandler, PyMaybeDiscoveryResult,
+    PyApiClient, PyCameraPtzHandler, PyColorLightHandler, PyDeviceDiscovery, PyDeviceDiscoveryIter,
+    PyDeviceDiscoveryRaw, PyDeviceDiscoveryRawIter, PyDiscoveryResult, PyHubHandler,
+    PyKE100Handler, PyLightHandler, PyMaybeDiscoveryRawResult, PyMaybeDiscoveryResult,
     PyPlugEnergyMonitoringHandler, PyPlugHandler, PyPowerStripEnergyMonitoringHandler,
     PyPowerStripHandler, PyPowerStripPlugEnergyMonitoringHandler, PyPowerStripPlugHandler,
-    PyRgbLightStripHandler, PyRgbicLightStripHandler, PyT31XHandler, PyT100Handler, PyT110Handler,
-    PyT300Handler,
+    PyRgbLightStripHandler, PyRgbicLightStripHandler, PyS200Handler, PyS210Handler, PyT31XHandler,
+    PyT100Handler, PyT110Handler, PyT300Handler,
 };
 use requests::{
     PyAlarmDuration, PyColorLightSetDeviceInfoParams, PyEnergyDataInterval, PyLightingEffect,
-    PyPowerDataInterval,
+    PyPowerDataInterval, PySegmentEffect,
 };
 use responses::{
-    TriggerLogsS200BResult, TriggerLogsT100Result, TriggerLogsT110Result, TriggerLogsT300Result,
+    TriggerLogsS200Result, TriggerLogsT100Result, TriggerLogsT110Result, TriggerLogsT300Result,
 };
 
 #[pymodule]
@@ -75,6 +79,9 @@ fn register_requests(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
     module.add_class::<PyLightingEffect>()?;
     module.add_class::<LightingEffectPreset>()?;
     module.add_class::<LightingEffectType>()?;
+    module.add_class::<PySegmentEffect>()?;
+    module.add_class::<SegmentEffectPreset>()?;
+    module.add_class::<SegmentEffectType>()?;
     module.add_class::<PyColorLightSetDeviceInfoParams>()?;
     module.add_class::<PyEnergyDataInterval>()?;
     module.add_class::<PyPowerDataInterval>()?;
@@ -91,18 +98,21 @@ fn register_requests(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
 fn register_handlers(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
     module.add_class::<PyApiClient>()?;
     module.add_class::<PyColorLightHandler>()?;
-    module.add_class::<PyGenericDeviceHandler>()?;
     module.add_class::<PyLightHandler>()?;
     module.add_class::<PyPlugEnergyMonitoringHandler>()?;
     module.add_class::<PyPlugHandler>()?;
     module.add_class::<PyRgbLightStripHandler>()?;
     module.add_class::<PyRgbicLightStripHandler>()?;
 
+    module.add_class::<PyCameraPtzHandler>()?;
+
     module.add_class::<PyHubHandler>()?;
     module.add_class::<PyKE100Handler>()?;
     module.add_class::<PyT100Handler>()?;
     module.add_class::<PyT110Handler>()?;
     module.add_class::<PyT300Handler>()?;
+    module.add_class::<PyS200Handler>()?;
+    module.add_class::<PyS210Handler>()?;
     module.add_class::<PyT31XHandler>()?;
 
     module.add_class::<PyPowerStripHandler>()?;
@@ -110,8 +120,13 @@ fn register_handlers(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
     module.add_class::<PyPowerStripPlugHandler>()?;
     module.add_class::<PyPowerStripPlugEnergyMonitoringHandler>()?;
 
+    module.add_class::<DeviceType>()?;
     module.add_class::<PyDeviceDiscovery>()?;
     module.add_class::<PyDeviceDiscoveryIter>()?;
+    module.add_class::<PyDeviceDiscoveryRaw>()?;
+    module.add_class::<PyDeviceDiscoveryRawIter>()?;
+    module.add_class::<DiscoveryRawResult>()?;
+    module.add_class::<PyMaybeDiscoveryRawResult>()?;
     module.add_class::<PyDiscoveryResult>()?;
     module.add_class::<PyMaybeDiscoveryResult>()?;
 
@@ -119,6 +134,7 @@ fn register_handlers(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
 }
 
 fn register_responses(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
+    module.add_class::<Component>()?;
     module.add_class::<CurrentPowerResult>()?;
     module.add_class::<DefaultBrightnessState>()?;
     module.add_class::<DefaultPowerType>()?;
@@ -135,8 +151,8 @@ fn register_responses(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
     module.add_class::<PowerProtectionStatus>()?;
     module.add_class::<UsageByPeriodResult>()?;
 
-    // device info: generic
-    module.add_class::<DeviceInfoGenericResult>()?;
+    // device info: other
+    module.add_class::<DeviceInfoBasicResult>()?;
 
     // device info: light
     module.add_class::<DeviceInfoLightResult>()?;
@@ -165,21 +181,29 @@ fn register_responses(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
     module.add_class::<DeviceInfoPlugResult>()?;
     module.add_class::<PlugState>()?;
 
+    // device info: camera
+    module.add_class::<DeviceInfoCameraResult>()?;
+    module.add_class::<Preset>()?;
+    module.add_class::<RtspStreamUrl>()?;
+    module.add_class::<Snapshot>()?;
+
     Ok(())
 }
 
 fn register_responses_hub(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
     module.add_class::<DeviceInfoHubResult>()?;
     module.add_class::<KE100Result>()?;
-    module.add_class::<S200BResult>()?;
+    module.add_class::<OtherResult>()?;
+    module.add_class::<S200Result>()?;
+    module.add_class::<S210Result>()?;
     module.add_class::<T100Result>()?;
     module.add_class::<T110Result>()?;
     module.add_class::<T300Result>()?;
     module.add_class::<T31XResult>()?;
 
     // child devices
-    module.add_class::<S200BLog>()?;
-    module.add_class::<S200BRotationParams>()?;
+    module.add_class::<S200Log>()?;
+    module.add_class::<S200RotationParams>()?;
     module.add_class::<Status>()?;
     module.add_class::<T100Log>()?;
     module.add_class::<T110Log>()?;
@@ -188,7 +212,7 @@ fn register_responses_hub(module: &Bound<'_, PyModule>) -> Result<(), PyErr> {
     module.add_class::<TemperatureHumidityRecords>()?;
     module.add_class::<TemperatureUnit>()?;
     module.add_class::<TemperatureUnitKE100>()?;
-    module.add_class::<TriggerLogsS200BResult>()?;
+    module.add_class::<TriggerLogsS200Result>()?;
     module.add_class::<TriggerLogsT100Result>()?;
     module.add_class::<TriggerLogsT110Result>()?;
     module.add_class::<TriggerLogsT300Result>()?;

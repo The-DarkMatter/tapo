@@ -1,7 +1,8 @@
 """Tapo API Client.
 
 Tested with light bulbs (L510, L520, L530, L535, L610, L630), light strips (L900, L920, L930), plugs (P100, P105, P110, P110M, P115),
-power strips (P300, P304M, P306, P316M), hubs (H100), switches (S200B) and sensors (KE100, T100, T110, T300, T310, T315).
+power strips (P300, P304M, P306, P316M), hubs (H100), switches (S200B, S200D, S210), sensors (KE100, T100, T110, T300, T310, T315)
+and cameras (C210, C220, C225, C325WB, C520WS, TC40, TC70).
 
 Example:
     ```python
@@ -22,9 +23,12 @@ Example:
 See [more examples](https://github.com/mihai-dinculescu/tapo/tree/main/tapo-py/examples).
 """
 
+from typing import Optional
+
+from .camera_ptz_handler import CameraPtzHandler
 from .color_light_handler import ColorLightHandler
 from .device_discovery import DeviceDiscovery
-from .generic_device_handler import GenericDeviceHandler
+from .device_discovery_raw import DeviceDiscoveryRaw
 from .hub_handler import HubHandler
 from .light_handler import LightHandler
 from .plug_energy_monitoring_handler import PlugEnergyMonitoringHandler
@@ -38,7 +42,8 @@ class ApiClient:
     """Tapo API Client.
 
     Tested with light bulbs (L510, L520, L530, L535, L610, L630), light strips (L900, L920, L930), plugs (P100, P105, P110, P110M, P115),
-    power strips (P300, P304M, P306, P316M), hubs (H100), switches (S200B) and sensors (KE100, T100, T110, T300, T310, T315).
+    power strips (P300, P304M, P306, P316M), hubs (H100), switches (S200B, S200D, S210), sensors (KE100, T100, T110, T300, T310, T315)
+    and cameras (C210, C220, C225, C325WB, C520WS, TC40, TC70).
 
     Example:
         ```python
@@ -59,13 +64,15 @@ class ApiClient:
     See [more examples](https://github.com/mihai-dinculescu/tapo/tree/main/tapo-py/examples).
     """
 
-    def __init__(self, tapo_username: str, tapo_password: str, timeout_s: int = 30) -> None:
+    def __init__(
+        self, tapo_username: str, tapo_password: str, timeout_s: Optional[int] = None
+    ) -> None:
         """Returns a new instance of `ApiClient`.
 
         Args:
             tapo_username (str): The Tapo username.
             tapo_password (str): The Tapo password.
-            timeout_s (int): The connection timeout in seconds. The default value is 30 seconds.
+            timeout_s (Optional[int]): The connection timeout in seconds. The default value is 30 seconds.
 
         Returns:
             ApiClient: Tapo API Client.
@@ -120,23 +127,20 @@ class ApiClient:
             ```
         """
 
-    async def generic_device(self, ip_address: str) -> GenericDeviceHandler:
-        """Specializes the given `ApiClient` into an authenticated `GenericDeviceHandler`.
+    @staticmethod
+    async def discover_devices_raw(target: str, timeout_s: int = 10) -> DeviceDiscoveryRaw:
+        """Discovers one or more devices located at a specified unicast or broadcast IP address,
+        returning the IP address of the devices found and their discovery JSON response.
 
         Args:
-            ip_address (str): The IP address of the device
+            target (str): The IP address at which the discovery will take place.
+                This address can be either a unicast (e.g. `192.168.1.10`) or a
+                broadcast address (e.g. `192.168.1.255`, `255.255.255.255`, etc.).
+            timeout_s (int): The maximum time to wait for a response from the device(s) in seconds.
+                Must be between `1` and `60`.
 
         Returns:
-            GenericDeviceHandler: Handler for generic devices. It provides the
-            functionality common to all Tapo [devices](https://www.tapo.com/en/).
-
-        Example:
-            ```python
-            client = ApiClient("tapo-username@example.com", "tapo-password")
-            device = await client.generic_device("192.168.1.100")
-
-            await device.on()
-            ```
+            AsyncIterator[MaybeDiscoveryRawResult]: An asynchronous iterator that yields `MaybeDiscoveryRawResult` objects.
         """
 
     async def l510(self, ip_address: str) -> LightHandler:
@@ -447,8 +451,8 @@ class ApiClient:
             ```
         """
 
-    async def p316(self, ip_address: str) -> PowerStripHandler:
-        """Specializes the given `ApiClient` into an authenticated `PowerStripHandler`.
+    async def p316(self, ip_address: str) -> PowerStripEnergyMonitoringHandler:
+        """Specializes the given `ApiClient` into an authenticated `PowerStripEnergyMonitoringHandler`.
 
         Args:
             ip_address (str): The IP address of the device
@@ -484,4 +488,123 @@ class ApiClient:
             child_device_list = await hub.get_child_device_list()
             print(f"Child device list: {child_device_list.to_dict()}")
             ```
+        """
+
+    async def c210(self, ip_address: str) -> CameraPtzHandler:
+        """Specializes the given `ApiClient` into an authenticated `CameraPtzHandler`.
+
+        Args:
+            ip_address (str): The IP address of the device
+
+        Returns:
+            CameraPtzHandler: Handler for Tapo cameras with PTZ, such as the
+            [C210](https://www.tapo.com/en/search/?q=C210),
+            [C220](https://www.tapo.com/en/search/?q=C220),
+            [C225](https://www.tapo.com/en/search/?q=C225),
+            [C325WB](https://www.tapo.com/en/search/?q=C325WB),
+            [C520WS](https://www.tapo.com/en/search/?q=C520WS),
+            [TC40](https://www.tapo.com/en/search/?q=TC40),
+            and [TC70](https://www.tapo.com/en/search/?q=TC70).
+        """
+
+    async def c220(self, ip_address: str) -> CameraPtzHandler:
+        """Specializes the given `ApiClient` into an authenticated `CameraPtzHandler`.
+
+        Args:
+            ip_address (str): The IP address of the device
+
+        Returns:
+            CameraPtzHandler: Handler for Tapo cameras with PTZ, such as the
+            [C210](https://www.tapo.com/en/search/?q=C210),
+            [C220](https://www.tapo.com/en/search/?q=C220),
+            [C225](https://www.tapo.com/en/search/?q=C225),
+            [C325WB](https://www.tapo.com/en/search/?q=C325WB),
+            [C520WS](https://www.tapo.com/en/search/?q=C520WS),
+            [TC40](https://www.tapo.com/en/search/?q=TC40),
+            and [TC70](https://www.tapo.com/en/search/?q=TC70).
+        """
+
+    async def c225(self, ip_address: str) -> CameraPtzHandler:
+        """Specializes the given `ApiClient` into an authenticated `CameraPtzHandler`.
+
+        Args:
+            ip_address (str): The IP address of the device
+
+        Returns:
+            CameraPtzHandler: Handler for Tapo cameras with PTZ, such as the
+            [C210](https://www.tapo.com/en/search/?q=C210),
+            [C220](https://www.tapo.com/en/search/?q=C220),
+            [C225](https://www.tapo.com/en/search/?q=C225),
+            [C325WB](https://www.tapo.com/en/search/?q=C325WB),
+            [C520WS](https://www.tapo.com/en/search/?q=C520WS),
+            [TC40](https://www.tapo.com/en/search/?q=TC40),
+            and [TC70](https://www.tapo.com/en/search/?q=TC70).
+        """
+
+    async def c325wb(self, ip_address: str) -> CameraPtzHandler:
+        """Specializes the given `ApiClient` into an authenticated `CameraPtzHandler`.
+
+        Args:
+            ip_address (str): The IP address of the device
+
+        Returns:
+            CameraPtzHandler: Handler for Tapo cameras with PTZ, such as the
+            [C210](https://www.tapo.com/en/search/?q=C210),
+            [C220](https://www.tapo.com/en/search/?q=C220),
+            [C225](https://www.tapo.com/en/search/?q=C225),
+            [C325WB](https://www.tapo.com/en/search/?q=C325WB),
+            [C520WS](https://www.tapo.com/en/search/?q=C520WS),
+            [TC40](https://www.tapo.com/en/search/?q=TC40),
+            and [TC70](https://www.tapo.com/en/search/?q=TC70).
+        """
+
+    async def c520ws(self, ip_address: str) -> CameraPtzHandler:
+        """Specializes the given `ApiClient` into an authenticated `CameraPtzHandler`.
+
+        Args:
+            ip_address (str): The IP address of the device
+
+        Returns:
+            CameraPtzHandler: Handler for Tapo cameras with PTZ, such as the
+            [C210](https://www.tapo.com/en/search/?q=C210),
+            [C220](https://www.tapo.com/en/search/?q=C220),
+            [C225](https://www.tapo.com/en/search/?q=C225),
+            [C325WB](https://www.tapo.com/en/search/?q=C325WB),
+            [C520WS](https://www.tapo.com/en/search/?q=C520WS),
+            [TC40](https://www.tapo.com/en/search/?q=TC40),
+            and [TC70](https://www.tapo.com/en/search/?q=TC70).
+        """
+
+    async def tc40(self, ip_address: str) -> CameraPtzHandler:
+        """Specializes the given `ApiClient` into an authenticated `CameraPtzHandler`.
+
+        Args:
+            ip_address (str): The IP address of the device
+
+        Returns:
+            CameraPtzHandler: Handler for Tapo cameras with PTZ, such as the
+            [C210](https://www.tapo.com/en/search/?q=C210),
+            [C220](https://www.tapo.com/en/search/?q=C220),
+            [C225](https://www.tapo.com/en/search/?q=C225),
+            [C325WB](https://www.tapo.com/en/search/?q=C325WB),
+            [C520WS](https://www.tapo.com/en/search/?q=C520WS),
+            [TC40](https://www.tapo.com/en/search/?q=TC40),
+            and [TC70](https://www.tapo.com/en/search/?q=TC70).
+        """
+
+    async def tc70(self, ip_address: str) -> CameraPtzHandler:
+        """Specializes the given `ApiClient` into an authenticated `CameraPtzHandler`.
+
+        Args:
+            ip_address (str): The IP address of the device
+
+        Returns:
+            CameraPtzHandler: Handler for Tapo cameras with PTZ, such as the
+            [C210](https://www.tapo.com/en/search/?q=C210),
+            [C220](https://www.tapo.com/en/search/?q=C220),
+            [C225](https://www.tapo.com/en/search/?q=C225),
+            [C325WB](https://www.tapo.com/en/search/?q=C325WB),
+            [C520WS](https://www.tapo.com/en/search/?q=C520WS),
+            [TC40](https://www.tapo.com/en/search/?q=TC40),
+            and [TC70](https://www.tapo.com/en/search/?q=TC70).
         """

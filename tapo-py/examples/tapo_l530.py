@@ -1,16 +1,17 @@
 """L530, L535 and L630 Example"""
 
 import asyncio
-import os
 
 from tapo import ApiClient
 from tapo.requests import Color
 
+from common import require_env_vars
+
 
 async def main():
-    tapo_username = "amoghupadhyay007@gmail.com"
-    tapo_password = "PR0wPQ3axzaI7T"
-    ip_address = "192.168.1.2"
+    tapo_username, tapo_password, ip_address = require_env_vars(
+        "TAPO_USERNAME", "TAPO_PASSWORD", "IP_ADDRESS"
+    )
 
     client = ApiClient(tapo_username, tapo_password)
     device = await client.l530(ip_address)

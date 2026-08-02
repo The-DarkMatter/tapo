@@ -1,7 +1,6 @@
-/target
+.claude/settings.local.json
+.DS_Store
 .vscode
 /.idea
-.venv
-__pycache__/
-*.pyc
-.env
+/target
+TODO.md

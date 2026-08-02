@@ -1,9 +1,12 @@
 /// L920 and L930 Example
-use std::{env, thread, time::Duration};
+use std::{thread, time::Duration};
 
 use log::info;
 use tapo::ApiClient;
-use tapo::requests::{Color, LightingEffect, LightingEffectPreset, LightingEffectType};
+use tapo::requests::{
+    Color, LightingEffect, LightingEffectPreset, LightingEffectType, SegmentEffect,
+    SegmentEffectPreset, SegmentEffectType,
+};
 
 mod common;
 
@@ -11,9 +14,8 @@ mod common;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     common::setup_logger();
 
-    let tapo_username = "amoghupadhyay007@gmail.com"; 
-    let tapo_password = "PR0wPQ3axzaI7T";
-    let ip_address = "192.168.1.2";
+    let [tapo_username, tapo_password, ip_address] =
+        common::require_env_vars(["TAPO_USERNAME", "TAPO_PASSWORD", "IP_ADDRESS"])?;
 
     let device = ApiClient::new(tapo_username, tapo_password)
         .l930(ip_address)
@@ -96,6 +98,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .with_duration(50);
 
     device.set_lighting_effect(custom_effect).await?;
+
+    info!("Waiting 10 seconds...");
+    thread::sleep(Duration::from_secs(10));
+
+    info!("Setting a preset Segment effect...");
+    device
+        .set_segment_effect(SegmentEffectPreset::Birthday)
+        .await?;
+
+    info!("Waiting 10 seconds...");
+    thread::sleep(Duration::from_secs(10));
+
+    info!("Setting a custom Segment effect...");
+    let custom_effect = SegmentEffect::new(
+        "My Custom Segment Effect",
+        SegmentEffectType::Circulating,
+        true,
+        true,
+        100,
+        vec![[267, 56, 100, 0]],
+    )
+    .with_segments(vec![49])
+    .with_states(vec![[267, 56, 100, 0]]);
+
+    device.set_segment_effect(custom_effect).await?;
 
     info!("Waiting 10 seconds...");
     thread::sleep(Duration::from_secs(10));

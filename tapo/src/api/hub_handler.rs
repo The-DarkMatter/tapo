@@ -1,14 +1,11 @@
-use async_trait::async_trait;
-use std::sync::Arc;
-use tokio::sync::{RwLock, RwLockReadGuard};
-
 use crate::error::Error;
 use crate::requests::{AlarmDuration, AlarmRingtone, AlarmVolume, PlayAlarmParams};
+#[cfg(feature = "debug")]
+use crate::responses::ChildDeviceComponentList;
 use crate::responses::{ChildDeviceHubResult, ChildDeviceListHubResult, DeviceInfoHubResult};
 
 use super::{
-    ApiClient, ApiClientExt, DeviceManagementExt, HandlerExt, KE100Handler, S200BHandler,
-    T31XHandler, T100Handler, T110Handler, T300Handler,
+    KE100Handler, S200Handler, S210Handler, T31XHandler, T100Handler, T110Handler, T300Handler,
 };
 
 macro_rules! get_device_id {
@@ -36,37 +33,14 @@ macro_rules! get_device_id {
     }};
 }
 
-/// Handler for the [H100](https://www.tapo.com/en/search/?q=H100) devices.
-#[derive(Debug)]
-pub struct HubHandler {
-    client: Arc<RwLock<ApiClient>>,
+tapo_handler! {
+    /// Handler for the [H100](https://www.tapo.com/en/search/?q=H100) devices.
+    HubHandler(DeviceInfoHubResult),
+    device_management,
 }
 
 /// Hub handler methods.
 impl HubHandler {
-    pub(crate) fn new(client: Arc<RwLock<ApiClient>>) -> Self {
-        Self { client }
-    }
-
-    /// Refreshes the authentication session.
-    pub async fn refresh_session(&mut self) -> Result<&mut Self, Error> {
-        self.client.write().await.refresh_session().await?;
-        Ok(self)
-    }
-
-    /// Returns *device info* as [`DeviceInfoHubResult`].
-    /// It is not guaranteed to contain all the properties returned from the Tapo API.
-    /// If the deserialization fails, or if a property that you care about it's not present, try [`HubHandler::get_device_info_json`].
-    pub async fn get_device_info(&self) -> Result<DeviceInfoHubResult, Error> {
-        self.client.read().await.get_device_info().await
-    }
-
-    /// Returns *device info* as [`serde_json::Value`].
-    /// It contains all the properties returned from the Tapo API.
-    pub async fn get_device_info_json(&self) -> Result<serde_json::Value, Error> {
-        self.client.read().await.get_device_info().await
-    }
-
     /// Returns *child device list* as [`ChildDeviceHubResult`].
     /// It is not guaranteed to contain all the properties returned from the Tapo API
     /// or to support all the possible devices connected to the hub.
@@ -100,6 +74,7 @@ impl HubHandler {
     ///
     /// * `start_index` - the index to start fetching the child device list.
     ///   It should be `0` for the first page, `10` for the second, and so on.
+    #[cfg(feature = "debug")]
     pub async fn get_child_device_list_json(
         &self,
         start_index: u64,
@@ -111,9 +86,12 @@ impl HubHandler {
             .await
     }
 
-    /// Returns *child device component list* as [`serde_json::Value`].
+    /// Returns *child device component list* as [`Vec<ChildDeviceComponentList>`].
     /// This information is useful in debugging or when investigating new functionality to add.
-    pub async fn get_child_device_component_list_json(&self) -> Result<serde_json::Value, Error> {
+    #[cfg(feature = "debug")]
+    pub async fn get_child_device_component_list(
+        &self,
+    ) -> Result<Vec<ChildDeviceComponentList>, Error> {
         self.client
             .read()
             .await
@@ -123,6 +101,7 @@ impl HubHandler {
 
     /// Returns a list of ringtones (alarm types) supported by the hub.
     /// Used for debugging only.
+    #[cfg(feature = "debug")]
     pub async fn get_supported_ringtone_list(&self) -> Result<Vec<String>, Error> {
         self.client
             .read()
@@ -183,7 +162,7 @@ impl HubHandler {
         Ok(KE100Handler::new(self.client.clone(), device_id))
     }
 
-    /// Returns a [`S200BHandler`] for the given [`HubDevice`].
+    /// Returns a [`S200Handler`] for the given [`HubDevice`].
     ///
     /// # Arguments
     ///
@@ -201,15 +180,44 @@ impl HubHandler {
     ///     .await?;
     /// // Get a handler for the child device
     /// let device_id = "0000000000000000000000000000000000000000".to_string();
-    /// let device = hub.s200b(HubDevice::ByDeviceId(device_id)).await?;
+    /// let device = hub.s200(HubDevice::ByDeviceId(device_id)).await?;
     /// // Get the device info of the child device
     /// let device_info = device.get_device_info().await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn s200b(&self, identifier: HubDevice) -> Result<S200BHandler, Error> {
-        let device_id = get_device_id!(self, identifier, ChildDeviceHubResult::S200B);
-        Ok(S200BHandler::new(self.client.clone(), device_id))
+    pub async fn s200(&self, identifier: HubDevice) -> Result<S200Handler, Error> {
+        let device_id = get_device_id!(self, identifier, ChildDeviceHubResult::S200);
+        Ok(S200Handler::new(self.client.clone(), device_id))
+    }
+
+    /// Returns a [`S210Handler`] for the given [`HubDevice`].
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - a hub device identifier
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use tapo::{ApiClient, HubDevice};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Connect to the hub
+    /// let hub = ApiClient::new("tapo-username@example.com", "tapo-password")
+    ///     .h100("192.168.1.100")
+    ///     .await?;
+    /// // Get a handler for the child device
+    /// let device_id = "0000000000000000000000000000000000000000".to_string();
+    /// let device = hub.s210(HubDevice::ByDeviceId(device_id)).await?;
+    /// // Get the device info of the child device
+    /// let device_info = device.get_device_info().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn s210(&self, identifier: HubDevice) -> Result<S210Handler, Error> {
+        let device_id = get_device_id!(self, identifier, ChildDeviceHubResult::S210);
+        Ok(S210Handler::new(self.client.clone(), device_id))
     }
 
     /// Returns a [`T100Handler`] for the given [`HubDevice`].
@@ -317,62 +325,97 @@ impl HubHandler {
     ///     .await?;
     /// // Get a handler for the child device
     /// let device_id = "0000000000000000000000000000000000000000".to_string();
-    /// let device = hub.t310(HubDevice::ByDeviceId(device_id)).await?;
+    /// let device = hub.t31x(HubDevice::ByDeviceId(device_id)).await?;
     /// // Get the device info of the child device
     /// let device_info = device.get_device_info().await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn t310(&self, identifier: HubDevice) -> Result<T31XHandler, Error> {
-        let device_id = get_device_id!(
-            self,
-            identifier,
-            ChildDeviceHubResult::T310,
-            ChildDeviceHubResult::T315
-        );
+    pub async fn t31x(&self, identifier: HubDevice) -> Result<T31XHandler, Error> {
+        let device_id = get_device_id!(self, identifier, ChildDeviceHubResult::T31X);
         Ok(T31XHandler::new(self.client.clone(), device_id))
     }
-
-    /// Returns a [`T31XHandler`] for the given [`HubDevice`].
-    ///
-    /// # Arguments
-    ///
-    /// * `identifier` - a hub device identifier
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// # use tapo::{ApiClient, HubDevice};
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// // Connect to the hub
-    /// let hub = ApiClient::new("tapo-username@example.com", "tapo-password")
-    ///     .h100("192.168.1.100")
-    ///     .await?;
-    /// // Get a handler for the child device
-    /// let device_id = "0000000000000000000000000000000000000000".to_string();
-    /// let device = hub.t315(HubDevice::ByDeviceId(device_id)).await?;
-    /// // Get the device info of the child device
-    /// let device_info = device.get_device_info().await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn t315(&self, identifier: HubDevice) -> Result<T31XHandler, Error> {
-        self.t310(identifier).await
-    }
 }
 
-#[async_trait]
-impl HandlerExt for HubHandler {
-    async fn get_client(&self) -> RwLockReadGuard<'_, dyn ApiClientExt> {
-        RwLockReadGuard::map(
-            self.client.read().await,
-            |client: &ApiClient| -> &dyn ApiClientExt { client },
-        )
+/// Unchecked child device handler builders.
+impl HubHandler {
+    /// Returns a [`KE100Handler`] for the given `device_id` without first
+    /// listing the hub's children to verify the device exists or matches the
+    /// requested model. The device id is trusted; if it is wrong or refers to
+    /// a different model, subsequent operations on the returned handler will
+    /// fail at request time. Use this when you already have a valid device id
+    /// (e.g. from a prior [`HubHandler::get_child_device_list`] call) to avoid
+    /// the extra validation round-trip performed by [`HubHandler::ke100`].
+    pub fn ke100_unchecked(&self, device_id: String) -> KE100Handler {
+        KE100Handler::new(self.client.clone(), device_id)
+    }
+
+    /// Returns a [`S200Handler`] for the given `device_id` without first
+    /// listing the hub's children to verify the device exists or matches the
+    /// requested model. The device id is trusted; if it is wrong or refers to
+    /// a different model, subsequent operations on the returned handler will
+    /// fail at request time. Use this when you already have a valid device id
+    /// (e.g. from a prior [`HubHandler::get_child_device_list`] call) to avoid
+    /// the extra validation round-trip performed by [`HubHandler::s200`].
+    pub fn s200_unchecked(&self, device_id: String) -> S200Handler {
+        S200Handler::new(self.client.clone(), device_id)
+    }
+
+    /// Returns a [`S210Handler`] for the given `device_id` without first
+    /// listing the hub's children to verify the device exists or matches the
+    /// requested model. The device id is trusted; if it is wrong or refers to
+    /// a different model, subsequent operations on the returned handler will
+    /// fail at request time. Use this when you already have a valid device id
+    /// (e.g. from a prior [`HubHandler::get_child_device_list`] call) to avoid
+    /// the extra validation round-trip performed by [`HubHandler::s210`].
+    pub fn s210_unchecked(&self, device_id: String) -> S210Handler {
+        S210Handler::new(self.client.clone(), device_id)
+    }
+
+    /// Returns a [`T100Handler`] for the given `device_id` without first
+    /// listing the hub's children to verify the device exists or matches the
+    /// requested model. The device id is trusted; if it is wrong or refers to
+    /// a different model, subsequent operations on the returned handler will
+    /// fail at request time. Use this when you already have a valid device id
+    /// (e.g. from a prior [`HubHandler::get_child_device_list`] call) to avoid
+    /// the extra validation round-trip performed by [`HubHandler::t100`].
+    pub fn t100_unchecked(&self, device_id: String) -> T100Handler {
+        T100Handler::new(self.client.clone(), device_id)
+    }
+
+    /// Returns a [`T110Handler`] for the given `device_id` without first
+    /// listing the hub's children to verify the device exists or matches the
+    /// requested model. The device id is trusted; if it is wrong or refers to
+    /// a different model, subsequent operations on the returned handler will
+    /// fail at request time. Use this when you already have a valid device id
+    /// (e.g. from a prior [`HubHandler::get_child_device_list`] call) to avoid
+    /// the extra validation round-trip performed by [`HubHandler::t110`].
+    pub fn t110_unchecked(&self, device_id: String) -> T110Handler {
+        T110Handler::new(self.client.clone(), device_id)
+    }
+
+    /// Returns a [`T300Handler`] for the given `device_id` without first
+    /// listing the hub's children to verify the device exists or matches the
+    /// requested model. The device id is trusted; if it is wrong or refers to
+    /// a different model, subsequent operations on the returned handler will
+    /// fail at request time. Use this when you already have a valid device id
+    /// (e.g. from a prior [`HubHandler::get_child_device_list`] call) to avoid
+    /// the extra validation round-trip performed by [`HubHandler::t300`].
+    pub fn t300_unchecked(&self, device_id: String) -> T300Handler {
+        T300Handler::new(self.client.clone(), device_id)
+    }
+
+    /// Returns a [`T31XHandler`] for the given `device_id` without first
+    /// listing the hub's children to verify the device exists or matches the
+    /// requested model. The device id is trusted; if it is wrong or refers to
+    /// a different model, subsequent operations on the returned handler will
+    /// fail at request time. Use this when you already have a valid device id
+    /// (e.g. from a prior [`HubHandler::get_child_device_list`] call) to avoid
+    /// the extra validation round-trip performed by [`HubHandler::t31x`].
+    pub fn t31x_unchecked(&self, device_id: String) -> T31XHandler {
+        T31XHandler::new(self.client.clone(), device_id)
     }
 }
-
-impl DeviceManagementExt for HubHandler {}
 
 /// Hub Device.
 pub enum HubDevice {

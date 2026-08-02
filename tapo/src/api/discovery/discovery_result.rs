@@ -1,40 +1,25 @@
-use std::net::IpAddr;
-
 use anyhow::Context;
 
 use crate::responses::{
-    DecodableResultExt, DeviceInfoColorLightResult, DeviceInfoGenericResult, DeviceInfoHubResult,
-    DeviceInfoLightResult, DeviceInfoPlugEnergyMonitoringResult, DeviceInfoPlugResult,
-    DeviceInfoPowerStripResult, DeviceInfoRgbLightStripResult, DeviceInfoRgbicLightStripResult,
+    DecodableResultExt, DeviceInfoBasicResult, DeviceInfoCameraResult, DeviceInfoColorLightResult,
+    DeviceInfoHubResult, DeviceInfoLightResult, DeviceInfoPlugEnergyMonitoringResult,
+    DeviceInfoPlugResult, DeviceInfoPowerStripResult, DeviceInfoRgbLightStripResult,
+    DeviceInfoRgbicLightStripResult,
 };
 use crate::{
-    ApiClient, ColorLightHandler, Error, GenericDeviceHandler, HubHandler, LightHandler,
+    ApiClient, CameraPtzHandler, ColorLightHandler, Error, HubHandler, LightHandler,
     PlugEnergyMonitoringHandler, PlugHandler, PowerStripEnergyMonitoringHandler, PowerStripHandler,
     RgbLightStripHandler, RgbicLightStripHandler,
 };
 
+use crate::api::protocol::DeviceFamily;
+
+use super::DeviceType;
+use super::discovery_raw_result::DiscoveryRawResult;
+
 #[derive(Debug)]
 /// Result of the device discovery process.
 pub enum DiscoveryResult {
-    /// A Generic Tapo device.
-    ///
-    /// If you believe this device is already supported, or would like to explore adding support for a currently
-    /// unsupported model, please [open an issue on GitHub](https://github.com/mihai-dinculescu/tapo/issues)
-    /// to start the discussion.
-    GenericDevice {
-        /// Device info of a Generic Tapo device.
-        ///
-        /// If you believe this device is already supported, or would like to explore adding support for a currently
-        /// unsupported model, please [open an issue on GitHub](https://github.com/mihai-dinculescu/tapo/issues)
-        /// to start the discussion.
-        device_info: Box<DeviceInfoGenericResult>,
-        /// Handler for generic devices. It provides the functionality common to all Tapo [devices](https://www.tapo.com/en/).
-        ///
-        /// If you believe this device is already supported, or would like to explore adding support for a currently
-        /// unsupported model, please [open an issue on GitHub](https://github.com/mihai-dinculescu/tapo/issues)
-        /// to start the discussion.
-        handler: GenericDeviceHandler,
-    },
     /// Tapo L510, L520 and L610 devices.
     Light {
         /// Device info of Tapo L510, L520 and L610.
@@ -108,87 +93,263 @@ pub enum DiscoveryResult {
         /// Handler for the [H100](https://www.tapo.com/en/search/?q=H100) devices.
         handler: HubHandler,
     },
+    /// Tapo cameras with PTZ (C210, C220, C225, C325WB, C520WS, TC40, TC70).
+    CameraPtz {
+        /// Device info of Tapo cameras (C100, C110, C210, C220, C225, C325WB, C520WS, C720, TC40, TC65, TC70, etc.).
+        device_info: Box<DeviceInfoCameraResult>,
+        /// Handler for Tapo cameras with PTZ, such as the
+        /// [C210](https://www.tapo.com/en/search/?q=C210),
+        /// [C220](https://www.tapo.com/en/search/?q=C220),
+        /// [C225](https://www.tapo.com/en/search/?q=C225),
+        /// [C325WB](https://www.tapo.com/en/search/?q=C325WB),
+        /// [C520WS](https://www.tapo.com/en/search/?q=C520WS),
+        /// [TC40](https://www.tapo.com/en/search/?q=TC40),
+        /// and [TC70](https://www.tapo.com/en/search/?q=TC70).
+        handler: CameraPtzHandler,
+        /// The IP address of the device.
+        ip: String,
+    },
+    /// A Tapo device without a specific handler implementation.
+    ///
+    /// If you believe that this device is already supported through one of the existing handlers, or would like to explore adding support for a currently
+    /// unsupported model, please [open an issue on GitHub](https://github.com/mihai-dinculescu/tapo/issues)
+    /// to start the discussion.
+    Other {
+        /// Device info of a Tapo device without a specific handler implementation.
+        ///
+        /// If you believe that this device is already supported through one of the existing handlers, or would like to explore adding support for a currently
+        /// unsupported model, please [open an issue on GitHub](https://github.com/mihai-dinculescu/tapo/issues)
+        /// to start the discussion.
+        device_info: Box<DeviceInfoBasicResult>,
+        /// The IP address of the device.
+        ip: String,
+    },
 }
 
 macro_rules! map_device_model {
-    ($discovery_result_type:ident, $device_info_type:ident, $device_info:expr, $handler:expr) => {{
+    ($discovery_result_type:ident, $device_info_type:ident, $handler_type:ident, $device_info:expr, $client:expr) => {{
         DiscoveryResult::$discovery_result_type {
             device_info: Box::new(
                 serde_json::from_value::<$device_info_type>($device_info)?.decode()?,
             ),
-            handler: $handler.into(),
+            handler: $handler_type::new($client.clone()),
         }
     }};
 }
 
 impl DiscoveryResult {
-    pub(crate) async fn new(client: ApiClient, ip_addr: IpAddr) -> Result<Self, Error> {
-        let handler = client.generic_device(ip_addr.to_string()).await?;
+    pub(crate) async fn new(
+        mut client: ApiClient,
+        raw_result: DiscoveryRawResult,
+    ) -> Result<Self, Error> {
+        let device_family = raw_result.device_family();
+        let auth_protocol = raw_result.auth_protocol();
 
-        let device_info = handler.get_device_info_json().await?;
+        client
+            .login(raw_result.ip.to_string(), device_family, auth_protocol)
+            .await?;
+        let device_info: serde_json::Value = client.get_device_info().await?;
 
-        let model = device_info
+        let client = std::sync::Arc::new(tokio::sync::RwLock::new(client));
+
+        let obj = device_info
             .as_object()
-            .context("Expected device_info result to be an object")?
-            .get_key_value("model")
-            .context("Expected device_info to contain the model field")?
-            .1
-            .as_str()
-            .context("Expected device_info model field to have a string value")?;
+            .context("Expected device_info result to be an object")?;
 
-        let result = match model {
-            "L510" | "L520" | "L610" => {
-                map_device_model!(Light, DeviceInfoLightResult, device_info, handler)
+        let model = obj
+            .get("model")
+            .or_else(|| obj.get("device_model"))
+            .and_then(|v| v.as_str())
+            .context("Expected device_info to contain the model field")?;
+
+        let device_type = DeviceType::from_model(model);
+
+        let result = match device_type {
+            DeviceType::Light => {
+                map_device_model!(
+                    Light,
+                    DeviceInfoLightResult,
+                    LightHandler,
+                    device_info,
+                    client
+                )
             }
-            "L530" | "L530 Series" | "L535" | "L535B" | "L630" => {
-                map_device_model!(ColorLight, DeviceInfoColorLightResult, device_info, handler)
+            DeviceType::ColorLight => {
+                map_device_model!(
+                    ColorLight,
+                    DeviceInfoColorLightResult,
+                    ColorLightHandler,
+                    device_info,
+                    client
+                )
             }
-            "L900" => {
+            DeviceType::RgbLightStrip => {
                 map_device_model!(
                     RgbLightStrip,
                     DeviceInfoRgbLightStripResult,
+                    RgbLightStripHandler,
                     device_info,
-                    handler
+                    client
                 )
             }
-            "L920" | "L930" => {
+            DeviceType::RgbicLightStrip => {
                 map_device_model!(
                     RgbicLightStrip,
                     DeviceInfoRgbicLightStripResult,
+                    RgbicLightStripHandler,
                     device_info,
-                    handler
+                    client
                 )
             }
-            "P100" | "P105" => {
-                map_device_model!(Plug, DeviceInfoPlugResult, device_info, handler)
+            DeviceType::Plug => {
+                map_device_model!(Plug, DeviceInfoPlugResult, PlugHandler, device_info, client)
             }
-            "P110" | "P110M" | "P115" => {
+            DeviceType::PlugEnergyMonitoring => {
                 map_device_model!(
                     PlugEnergyMonitoring,
                     DeviceInfoPlugEnergyMonitoringResult,
+                    PlugEnergyMonitoringHandler,
                     device_info,
-                    handler
+                    client
                 )
             }
-            "P300" | "P306" => {
-                map_device_model!(PowerStrip, DeviceInfoPowerStripResult, device_info, handler)
+            DeviceType::PowerStrip => {
+                map_device_model!(
+                    PowerStrip,
+                    DeviceInfoPowerStripResult,
+                    PowerStripHandler,
+                    device_info,
+                    client
+                )
             }
-            "P304M" | "P316M" => {
+            DeviceType::PowerStripEnergyMonitoring => {
                 map_device_model!(
                     PowerStripEnergyMonitoring,
                     DeviceInfoPowerStripResult,
+                    PowerStripEnergyMonitoringHandler,
                     device_info,
-                    handler
+                    client
                 )
             }
-            "H100" => {
-                map_device_model!(Hub, DeviceInfoHubResult, device_info, handler)
+            DeviceType::Hub => {
+                map_device_model!(Hub, DeviceInfoHubResult, HubHandler, device_info, client)
             }
-            _ => {
-                map_device_model!(GenericDevice, DeviceInfoGenericResult, device_info, handler)
+            DeviceType::CameraPtz => DiscoveryResult::CameraPtz {
+                device_info: Box::new(serde_json::from_value::<DeviceInfoCameraResult>(
+                    device_info,
+                )?),
+                handler: CameraPtzHandler::new(client.clone(), raw_result.ip.to_string()),
+                ip: raw_result.ip.to_string(),
+            },
+            DeviceType::Other => {
+                let info: DeviceInfoBasicResult = serde_json::from_value(device_info)?;
+                let info = match device_family {
+                    DeviceFamily::SmartCam => info,
+                    _ => info.decode()?,
+                };
+                DiscoveryResult::Other {
+                    device_info: Box::new(info),
+                    ip: raw_result.ip.to_string(),
+                }
             }
         };
 
         Ok(result)
+    }
+
+    /// Returns the [`DeviceType`] category of this discovery result.
+    pub fn device_type(&self) -> DeviceType {
+        match self {
+            DiscoveryResult::Light { .. } => DeviceType::Light,
+            DiscoveryResult::ColorLight { .. } => DeviceType::ColorLight,
+            DiscoveryResult::RgbLightStrip { .. } => DeviceType::RgbLightStrip,
+            DiscoveryResult::RgbicLightStrip { .. } => DeviceType::RgbicLightStrip,
+            DiscoveryResult::Plug { .. } => DeviceType::Plug,
+            DiscoveryResult::PlugEnergyMonitoring { .. } => DeviceType::PlugEnergyMonitoring,
+            DiscoveryResult::PowerStrip { .. } => DeviceType::PowerStrip,
+            DiscoveryResult::PowerStripEnergyMonitoring { .. } => {
+                DeviceType::PowerStripEnergyMonitoring
+            }
+            DiscoveryResult::Hub { .. } => DeviceType::Hub,
+            DiscoveryResult::CameraPtz { .. } => DeviceType::CameraPtz,
+            DiscoveryResult::Other { .. } => DeviceType::Other,
+        }
+    }
+
+    /// Returns the model string (e.g. "L530", "P110").
+    pub fn model(&self) -> &str {
+        match self {
+            DiscoveryResult::Light { device_info, .. } => &device_info.model,
+            DiscoveryResult::ColorLight { device_info, .. } => &device_info.model,
+            DiscoveryResult::RgbLightStrip { device_info, .. } => &device_info.model,
+            DiscoveryResult::RgbicLightStrip { device_info, .. } => &device_info.model,
+            DiscoveryResult::Plug { device_info, .. } => &device_info.model,
+            DiscoveryResult::PlugEnergyMonitoring { device_info, .. } => &device_info.model,
+            DiscoveryResult::PowerStrip { device_info, .. } => &device_info.model,
+            DiscoveryResult::PowerStripEnergyMonitoring { device_info, .. } => &device_info.model,
+            DiscoveryResult::Hub { device_info, .. } => &device_info.model,
+            DiscoveryResult::CameraPtz { device_info, .. } => &device_info.model,
+            DiscoveryResult::Other { device_info, .. } => &device_info.model,
+        }
+    }
+
+    /// Returns the IP address of the device.
+    pub fn ip(&self) -> &str {
+        match self {
+            DiscoveryResult::Light { device_info, .. } => &device_info.ip,
+            DiscoveryResult::ColorLight { device_info, .. } => &device_info.ip,
+            DiscoveryResult::RgbLightStrip { device_info, .. } => &device_info.ip,
+            DiscoveryResult::RgbicLightStrip { device_info, .. } => &device_info.ip,
+            DiscoveryResult::Plug { device_info, .. } => &device_info.ip,
+            DiscoveryResult::PlugEnergyMonitoring { device_info, .. } => &device_info.ip,
+            DiscoveryResult::PowerStrip { device_info, .. } => &device_info.ip,
+            DiscoveryResult::PowerStripEnergyMonitoring { device_info, .. } => &device_info.ip,
+            DiscoveryResult::Hub { device_info, .. } => &device_info.ip,
+            DiscoveryResult::CameraPtz { ip, .. } => ip,
+            DiscoveryResult::Other { ip, .. } => ip,
+        }
+    }
+
+    /// Returns the device ID.
+    pub fn device_id(&self) -> &str {
+        match self {
+            DiscoveryResult::Light { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::ColorLight { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::RgbLightStrip { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::RgbicLightStrip { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::Plug { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::PlugEnergyMonitoring { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::PowerStrip { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::PowerStripEnergyMonitoring { device_info, .. } => {
+                &device_info.device_id
+            }
+            DiscoveryResult::Hub { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::CameraPtz { device_info, .. } => &device_info.device_id,
+            DiscoveryResult::Other { device_info, .. } => &device_info.device_id,
+        }
+    }
+
+    /// Returns the device nickname.
+    ///
+    /// PowerStrip variants lack a nickname field, so a descriptive literal is returned instead.
+    pub fn nickname(&self) -> &str {
+        match self {
+            DiscoveryResult::Light { device_info, .. } => &device_info.nickname,
+            DiscoveryResult::ColorLight { device_info, .. } => &device_info.nickname,
+            DiscoveryResult::RgbLightStrip { device_info, .. } => &device_info.nickname,
+            DiscoveryResult::RgbicLightStrip { device_info, .. } => &device_info.nickname,
+            DiscoveryResult::Plug { device_info, .. } => &device_info.nickname,
+            DiscoveryResult::PlugEnergyMonitoring { device_info, .. } => &device_info.nickname,
+            DiscoveryResult::PowerStrip { .. } => DeviceType::PowerStrip.as_str(),
+            DiscoveryResult::PowerStripEnergyMonitoring { .. } => {
+                DeviceType::PowerStripEnergyMonitoring.as_str()
+            }
+            DiscoveryResult::Hub { device_info, .. } => &device_info.nickname,
+            DiscoveryResult::CameraPtz { device_info, .. } => &device_info.nickname,
+            DiscoveryResult::Other { device_info, .. } => device_info
+                .nickname
+                .as_deref()
+                .unwrap_or(DeviceType::Other.as_str()),
+        }
     }
 }

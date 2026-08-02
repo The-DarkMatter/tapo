@@ -5,10 +5,11 @@ import os
 
 from tapo import ApiClient, DiscoveryResult
 
+from common import require_env_vars
+
 
 async def main():
-    tapo_username = os.getenv("TAPO_USERNAME")
-    tapo_password = os.getenv("TAPO_PASSWORD")
+    tapo_username, tapo_password = require_env_vars("TAPO_USERNAME", "TAPO_PASSWORD")
     target = os.getenv("TARGET", "192.168.1.255")
     timeout_s = int(os.getenv("TIMEOUT", 10))
 
@@ -17,15 +18,22 @@ async def main():
     api_client = ApiClient(tapo_username, tapo_password)
     discovery = await api_client.discover_devices(target, timeout_s)
 
+    # NOTE: This example uses explicit pattern matching to demonstrate all
+    # DiscoveryResult variants and the way in which they expose `device_info`
+    # and `handler`. For a more concise approach, you can use the
+    # accessor properties instead for a few common properties:
+    #
+    #   device_id = discovery_result.device_id
+    #   nickname = discovery_result.nickname
+    #   model = discovery_result.model
+    #   ip = discovery_result.ip
+    #   device_type = discovery_result.device_type
+
     async for discovery_result in discovery:
         try:
-            device = discovery_result.get()
+            discovery_result = discovery_result.get()
 
-            match device:
-                case DiscoveryResult.GenericDevice(device_info, _handler):
-                    print(
-                        f"Found Unsupported Device '{device_info.nickname}' of model '{device_info.model}' at IP address '{device_info.ip}'."
-                    )
+            match discovery_result:
                 case DiscoveryResult.Light(device_info, _handler):
                     print(
                         f"Found '{device_info.nickname}' of model '{device_info.model}' at IP address '{device_info.ip}'."
@@ -61,6 +69,10 @@ async def main():
                 case DiscoveryResult.Hub(device_info, _handler):
                     print(
                         f"Found '{device_info.nickname}' of model '{device_info.model}' at IP address '{device_info.ip}'."
+                    )
+                case DiscoveryResult.Other(device_info, ip):
+                    print(
+                        f"Found device without a dedicated handler '{device_info.nickname}' of model '{device_info.model}' at IP address '{ip}'."
                     )
         except Exception as e:
             print(f"Error discovering device: {e}")

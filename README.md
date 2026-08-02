@@ -8,7 +8,7 @@
 [![PyPI][pypi_badge]][pypi]
 [![Python][pypi_versions_badge]][pypi]
 [![PyPI][pypi_downloads_badge]][pypi]\
-Unofficial Tapo API Client. Works with TP-Link Tapo smart devices. Tested with light bulbs (L510, L520, L530, L535, L610, L630), light strips (L900, L920, L930), plugs (P100, P105, P110, P110M, P115), power strips (P300, P304M, P306, P316M), hubs (H100), switches (S200B) and sensors (KE100, T100, T110, T300, T310, T315).
+Unofficial Tapo API Client. Works with TP-Link Tapo smart devices. Tested with light bulbs (L510, L520, L530, L535, L610, L630), light strips (L900, L920, L930), plugs (P100, P105, P110, P110M, P115), power strips (P300, P304M, P306, P316M), hubs (H100), switches (S200B, S200D, S210), sensors (KE100, T100, T110, T300, T310, T315) and cameras (C210, C220, C225, C325WB, C520WS, TC40, TC70).
 
 [license_badge]: https://img.shields.io/crates/l/tapo.svg
 [license]: https://github.com/mihai-dinculescu/tapo/blob/main/LICENSE
@@ -27,14 +27,14 @@ Unofficial Tapo API Client. Works with TP-Link Tapo smart devices. Tested with l
 
 See [/SUPPORTED_DEVICES.md][supported_devices] for the supported devices and feature matrix.
 
-## Rust
+## Rust Library
 
 ### Usage
 
 > Cargo.toml
 ```toml
 [dependencies]
-tapo = "0.8"
+tapo = "0.9"
 ```
 
 > main.rs
@@ -58,10 +58,7 @@ cargo run --example tapo_l530
 
 See all examples in [/tapo/examples][examples].
 
-### Wrapper REST API
-[tapo-rest][tapo_rest] is a REST wrapper of this library that can be deployed as a service or serve as an advanced example.
-
-## Python
+## Python Library
 
 ### Usage
 
@@ -80,9 +77,9 @@ await device.on()
 
 ```bash
 cd tapo-py
-poetry install # On the initial run
-poetry shell
-maturin develop # On the initial run and whenever the Rust code is modified
+uv venv # On the initial run only
+uv sync --group dev --locked
+uv run maturin develop # On the initial run and whenever the Rust code is modified
 
 export TAPO_USERNAME=
 export TAPO_PASSWORD=
@@ -90,10 +87,22 @@ export IP_ADDRESS=
 ```
 
 ```bash
-python examples/tapo_p110.py
+uv run python examples/tapo_p110.py
 ```
 
 See all examples in [/tapo-py/examples][examples-py].
+
+## MCP Server
+
+An MCP server that exposes Tapo devices as AI-callable tools and resources via the [Model Context Protocol](https://modelcontextprotocol.io/). See [/tapo-mcp/README.md][tapo_mcp] for setup and usage.
+
+## Community Projects
+
+- [tapo-rest][tapo_rest] — a REST wrapper of this library that can be deployed as a service or serve as an advanced example.
+
+## Troubleshooting
+
+See [/TROUBLESHOOTING.md][troubleshooting] for solutions to common issues.
 
 ## Contributing
 
@@ -106,6 +115,8 @@ Inspired by [petretiandrea/plugp100][inspired_by].
 [supported_devices]: https://github.com/mihai-dinculescu/tapo/blob/main/SUPPORTED_DEVICES.md
 [examples]: https://github.com/mihai-dinculescu/tapo/tree/main/tapo/examples
 [examples-py]: https://github.com/mihai-dinculescu/tapo/tree/main/tapo-py/examples
+[tapo_mcp]: https://github.com/mihai-dinculescu/tapo/tree/main/tapo-mcp
 [tapo_rest]: https://github.com/ClementNerma/tapo-rest
+[troubleshooting]: https://github.com/mihai-dinculescu/tapo/blob/main/TROUBLESHOOTING.md
 [contributing]: https://github.com/mihai-dinculescu/tapo/blob/main/CONTRIBUTING.md
 [inspired_by]: https://github.com/petretiandrea/plugp100

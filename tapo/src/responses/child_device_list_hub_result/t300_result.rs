@@ -6,7 +6,10 @@ use crate::responses::{DecodableResultExt, Status, TapoResponseExt, decode_value
 /// Water leak status.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all, eq, eq_int))]
+#[cfg_attr(
+    feature = "python",
+    pyo3::prelude::pyclass(from_py_object, get_all, eq, eq_int)
+)]
 #[allow(missing_docs)]
 pub enum WaterLeakStatus {
     Normal,
@@ -19,7 +22,7 @@ pub enum WaterLeakStatus {
 /// Specific properties: `in_alarm`, `water_leak_status`, `report_interval`,
 /// `last_onboarding_timestamp`, `status_follow_edge`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub struct T300Result {
     // Common properties to all Hub child devices.
@@ -34,6 +37,7 @@ pub struct T300Result {
     pub jamming_rssi: i16,
     pub jamming_signal_level: u8,
     pub mac: String,
+    pub model: String,
     pub nickname: String,
     pub oem_id: String,
     pub parent_device_id: String,
@@ -54,16 +58,7 @@ pub struct T300Result {
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl T300Result {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(T300Result);
 
 impl TapoResponseExt for T300Result {}
 
@@ -77,7 +72,7 @@ impl DecodableResultExt for T300Result {
 /// T300 Log.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "event")]
-#[cfg_attr(feature = "python", pyo3::prelude::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::prelude::pyclass(from_py_object, get_all))]
 #[allow(missing_docs)]
 pub enum T300Log {
     WaterDry { id: u64, timestamp: u64 },
@@ -85,13 +80,4 @@ pub enum T300Log {
 }
 
 #[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl T300Log {
-    /// Gets all the properties of this result as a dictionary.
-    pub fn to_dict(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::types::PyDict>> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| pyo3::exceptions::PyException::new_err(e.to_string()))?;
-
-        crate::python::serde_object_to_py_dict(py, &value)
-    }
-}
+crate::impl_to_dict!(T300Log);
